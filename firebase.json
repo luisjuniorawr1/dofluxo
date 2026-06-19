@@ -1,0 +1,26 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dofluxo-organizer",
+          "appId": "1:155958978157:android:d7e1e21728aeabc11f8164",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dofluxo-organizer",
+          "configurations": {
+            "android": "1:155958978157:android:d7e1e21728aeabc11f8164",
+            "web": "1:155958978157:web:c151323e600ee8ed1f8164"
+          }
+        }
+      }
+    }
+  }
+}

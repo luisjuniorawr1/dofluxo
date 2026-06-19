@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(agencyId) {
+      return isSignedIn() && request.auth.uid == agencyId;
+    }
+
+    match /settings/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /clients/{clientId} {
+      allow read, delete: if isOwner(resource.data.agencyId);
+      allow create: if isOwner(request.resource.data.agencyId);
+      allow update: if isOwner(resource.data.agencyId)
+        && request.resource.data.agencyId == resource.data.agencyId;
+    }
+
+    match /projects/{projectId} {
+      allow read, delete: if isOwner(resource.data.agencyId);
+      allow create: if isOwner(request.resource.data.agencyId);
+      allow update: if isOwner(resource.data.agencyId)
+        && request.resource.data.agencyId == resource.data.agencyId;
+    }
+  }
+}

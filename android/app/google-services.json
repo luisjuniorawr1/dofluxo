@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "155958978157",
+    "project_id": "dofluxo-organizer",
+    "storage_bucket": "dofluxo-organizer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155958978157:android:d7e1e21728aeabc11f8164",
+        "android_client_info": {
+          "package_name": "com.example.dofluxo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "155958978157-0uo84lvqp0s9ouf59j5nvk47lmjom6c9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAKmUWhPM8lnmvJl7MgMed1RJ19IM64FE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "155958978157-0uo84lvqp0s9ouf59j5nvk47lmjom6c9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
