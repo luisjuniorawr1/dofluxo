@@ -1,10 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+
 import '../../../core/utils/date_format_utils.dart';
+import '../../projects/models/planning_status.dart';
+import '../../projects/models/project_category.dart';
 import '../../projects/models/project_production_task.dart';
+import '../config/dashboard_stages.dart';
 import '../utils/dashboard_board_mapper.dart';
-/// Item exibido no quadro do dashboard.
-///
-/// Campos opcionais são renderizados somente quando preenchidos,
-/// permitindo que cada agência alimente os cards conforme seu uso.
+
+/// Item exibido no quadro Kanban do dashboard.
 class ProjectBoardItem {
   const ProjectBoardItem({
     required this.id,
@@ -15,6 +19,12 @@ class ProjectBoardItem {
     this.statusLabel,
     this.progress,
     this.isCompleted = false,
+    this.isPlanejamento = false,
+    this.format,
+    this.planningStatusLabel,
+    this.accentColor,
+    this.boardOrder,
+    this.createdAtMillis,
   });
 
   final String id;
@@ -25,8 +35,42 @@ class ProjectBoardItem {
   final String? statusLabel;
   final double? progress;
   final bool isCompleted;
+  final bool isPlanejamento;
+  final String? format;
+  final String? planningStatusLabel;
+  final Color? accentColor;
+  final double? boardOrder;
+  final int? createdAtMillis;
 
   bool get hasProgress => progress != null;
+
+  /// Título principal exibido no card — nome do projeto.
+  String get cardPrimaryTitle {
+    final t = title.trim();
+    if (t.isNotEmpty) return t;
+
+    // Legado: projetos antigos sem título explícito.
+    final client = clientName?.trim();
+    final formatLabel = format?.trim();
+    if (client != null && client.isNotEmpty && formatLabel != null && formatLabel.isNotEmpty) {
+      return '$client · $formatLabel';
+    }
+    if (client != null && client.isNotEmpty) return client;
+    return 'Sem nome';
+  }
+
+  /// Segunda linha: data de entrega · cliente.
+  String? get cardSubtitle {
+    final parts = <String>[];
+    final date = expectedDeliveryDate?.trim();
+    final client = clientName?.trim();
+
+    if (date != null && date.isNotEmpty) parts.add(date);
+    if (client != null && client.isNotEmpty) parts.add(client);
+
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
 
   String get displayTitle {
     if (clientName != null && clientName!.isNotEmpty) {
@@ -43,6 +87,12 @@ class ProjectBoardItem {
     String? statusLabel,
     double? progress,
     bool? isCompleted,
+    bool? isPlanejamento,
+    String? format,
+    String? planningStatusLabel,
+    Color? accentColor,
+    double? boardOrder,
+    int? createdAtMillis,
   }) {
     return ProjectBoardItem(
       id: id,
@@ -53,6 +103,12 @@ class ProjectBoardItem {
       statusLabel: statusLabel ?? this.statusLabel,
       progress: progress ?? this.progress,
       isCompleted: isCompleted ?? this.isCompleted,
+      isPlanejamento: isPlanejamento ?? this.isPlanejamento,
+      format: format ?? this.format,
+      planningStatusLabel: planningStatusLabel ?? this.planningStatusLabel,
+      accentColor: accentColor ?? this.accentColor,
+      boardOrder: boardOrder ?? this.boardOrder,
+      createdAtMillis: createdAtMillis ?? this.createdAtMillis,
     );
   }
 
@@ -61,6 +117,7 @@ class ProjectBoardItem {
   }
 
   factory ProjectBoardItem.fromFirestore(String id, Map<String, dynamic> data) {
+    final isPlanning = isPlanejamentoProject(data);
     final tasks = ProjectProductionTask.listFromFirestore(data['productionTasks']);
     final tasksProgress = ProjectProductionTask.progressFromTasks(tasks);
 
@@ -72,15 +129,25 @@ class ProjectBoardItem {
     }
 
     final firestoreStatus = data['status'] as String?;
-    final stageId = DashboardBoardMapper.stageIdForStatus(firestoreStatus);
+    final stageId = DashboardBoardMapper.stageIdForStatus(firestoreStatus, data: data);
     final isCompleted = data['isCompleted'] == true ||
-        DashboardBoardMapper.isCompletedStatus(firestoreStatus);
+        DashboardBoardMapper.isCompletedStatus(firestoreStatus) ||
+        stageId == DashboardStageId.concluido;
+
+    final planningStatus = PlanningStatus.fromFirestore(data['planningStatus'] as String?);
+
+    final boardOrderRaw = data['boardOrder'];
+    final boardOrder = boardOrderRaw is num ? boardOrderRaw.toDouble() : null;
+    final createdAt = data['createdAt'];
+    final createdAtMillis = createdAt is Timestamp ? createdAt.millisecondsSinceEpoch : null;
 
     final statusLabel = (data['statusLabel'] as String?)?.trim() ??
         DashboardBoardMapper.cardStatusLabel(
           firestoreStatus: firestoreStatus,
           stage: stageId,
           isCompleted: isCompleted,
+          isPlanejamento: isPlanning,
+          planningStatusLabel: planningStatus.label,
         );
 
     return ProjectBoardItem(
@@ -88,14 +155,22 @@ class ProjectBoardItem {
       title: (data['title'] as String?)?.trim() ?? '',
       clientName: (data['clientName'] as String?)?.trim(),
       expectedDeliveryDate: _readExpectedDeliveryDate(data),
-      description: (data['description'] as String?)?.trim(),      statusLabel: statusLabel,
+      description: (data['description'] as String?)?.trim(),
+      statusLabel: statusLabel,
       progress: progress,
       isCompleted: isCompleted,
+      isPlanejamento: isPlanning,
+      format: (data['format'] as String?)?.trim(),
+      planningStatusLabel: isPlanning ? planningStatus.label : null,
+      accentColor: isPlanning ? planningStatus.color : null,
+      boardOrder: boardOrder,
+      createdAtMillis: createdAtMillis,
     );
   }
 
   static String? _readExpectedDeliveryDate(Map<String, dynamic> data) {
-    final parsed = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']);
+    final parsed = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']) ??
+        DateFormatUtils.fromFirestore(data['scheduledDate']);
     if (parsed != null) return DateFormatUtils.formatDayMonthYear(parsed);
     return null;
   }

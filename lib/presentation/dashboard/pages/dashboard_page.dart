@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/agency/agency_context.dart';
+import '../../agency/agency_service_scope.dart';
 import '../../profile/pages/profile_page.dart';
 import '../../projects/manager/project_service.dart';
 import '../../projects/pages/project_detail_page.dart';
@@ -11,6 +14,7 @@ import '../config/dashboard_stages.dart';
 import '../utils/dashboard_board_mapper.dart';
 import '../widgets/dashboard_welcome_header.dart';
 import '../widgets/dashboard_board_layout.dart';
+import '../widgets/dashboard_display_filter.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,18 +24,30 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final ProjectService _projectService = ProjectService();
   final _uuid = const Uuid();
   bool _isCreatingProject = false;
   bool _isMovingProject = false;
+  bool _showJobs = true;
+  bool _showPlanning = true;
 
-  Future<void> _moveProject(String projectId, DashboardStageId targetStage) async {
+  Future<void> _moveProject(
+    String projectId,
+    DashboardStageId targetStage,
+    int insertIndex,
+    double boardOrder,
+  ) async {
     if (_isMovingProject) return;
 
-    setState(() => _isMovingProject = true);
+    _isMovingProject = true;
     try {
       final status = DashboardBoardMapper.firestoreStatusForStage(targetStage);
-      await _projectService.updateProjectStatus(projectId, status);
+      final planningStatus = DashboardBoardMapper.planningStatusForStage(targetStage);
+
+      await context.read<ProjectService>().updateProject(projectId, {
+        'status': status,
+        'boardOrder': boardOrder,
+        if (planningStatus != null) 'planningStatus': planningStatus,
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -42,7 +58,7 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isMovingProject = false);
+      _isMovingProject = false;
     }
   }
 
@@ -64,7 +80,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _openProject(String projectId) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => ProjectDetailPage(projectId: projectId)),
+      MaterialPageRoute(
+        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+          context,
+          ProjectDetailPage(projectId: projectId),
+        ),
+      ),
     );
   }
 
@@ -72,7 +93,10 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final result = await showDialog<NewProjectResult>(
         context: context,
-        builder: (context) => const NewProjectDialog(),
+        builder: (dialogContext) => AgencyServiceScope.wrapRoute(
+          context,
+          const NewProjectDialog(),
+        ),
       );
 
       if (result == null || !mounted) return;
@@ -80,7 +104,8 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() => _isCreatingProject = true);
 
       final projectId = _uuid.v4();
-      final docId = await _projectService.addProject(result.toFirestorePayload(projectId));
+      final docId =
+          await context.read<ProjectService>().addProject(result.toFirestorePayload(projectId));
 
       if (!mounted) return;
 
@@ -117,6 +142,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < DashboardLayoutBreakpoints.mobileCarousel;
     final pagePadding = isMobile ? 16.0 : 28.0;
+    final projectsStream = context.read<ProjectService>().getProjectsStream();
 
     return Padding(
       padding: EdgeInsets.all(pagePadding),
@@ -125,12 +151,12 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           DashboardWelcomeHeader(
             userName: _userFirstName,
-            actions: _buildActions(),
+            actions: _buildActions(isMobile),
           ),
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _projectService.getProjectsStream(),
+              stream: projectsStream,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
@@ -146,14 +172,20 @@ class _DashboardPageState extends State<DashboardPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                if (!_showJobs && !_showPlanning) {
+                  return _buildNothingSelectedState(context);
+                }
+
                 final board = snapshot.hasData
-                    ? DashboardBoardMapper.groupSnapshot(snapshot.data!)
+                    ? DashboardBoardMapper.groupSnapshot(
+                        snapshot.data!,
+                        includeJobs: _showJobs,
+                        includePlanning: _showPlanning,
+                      )
                     : DashboardBoardMapper.emptyBoard();
-                final statusProjects = DashboardBoardMapper.statusPanelProjects(board);
 
                 return DashboardBoardLayout(
                   itemsByStage: board,
-                  statusProjects: statusProjects,
                   onProjectMove: _moveProject,
                   onProjectTap: _openProject,
                 );
@@ -165,11 +197,48 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildNothingSelectedState(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.filter_alt_off_outlined,
+            size: 48,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Nada selecionado para exibir',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Marque Job e/ou Planejamento digital nos filtros acima.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActions(bool isMobile) {
+    final canManageSettings = context.watch<AgencyContext>().canManageSettings;
+    final filter = DashboardDisplayFilter(
+      showJobs: _showJobs,
+      showPlanning: _showPlanning,
+      onJobsChanged: (value) => setState(() => _showJobs = value),
+      onPlanningChanged: (value) => setState(() => _showPlanning = value),
+    );
+
     final settingsButton = OutlinedButton.icon(
       onPressed: _openProfileSettings,
       icon: const Icon(Icons.settings_outlined),
-      label: const Text('Configurações'),
+      label: isMobile ? const Text('Config.') : const Text('Configurações'),
     );
 
     final newProjectButton = FilledButton.icon(
@@ -184,11 +253,13 @@ class _DashboardPageState extends State<DashboardPage> {
       label: const Text('Novo Projeto'),
     );
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        settingsButton,
-        const SizedBox(width: 12),
+        filter,
+        if (canManageSettings) settingsButton,
         newProjectButton,
       ],
     );

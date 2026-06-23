@@ -89,6 +89,7 @@ class AppTheme {
           fontWeight: FontWeight.w700,
         ),
         actionsIconTheme: IconThemeData(color: colorScheme.onSurface),
+        actionsPadding: const EdgeInsets.only(right: 48),
       ),
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerLow,

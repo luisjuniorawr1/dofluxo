@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dofluxo/presentation/auth/manager/auth_service.dart';
-import '../../../core/settings/settings_service.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../shared/theme_toggle_button.dart';
 
@@ -14,7 +13,6 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
-  final SettingsService _settingsService = SettingsService();
   bool _isLoading = false;
 
   Future<void> _handleGoogleLogin() async {
@@ -29,20 +27,6 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
         return;
-      }
-
-      if (!mounted) return;
-
-      try {
-        final settings = await _settingsService.load(user.uid);
-        if (mounted) {
-          Provider.of<ThemeProvider>(context, listen: false).applySettings(
-            primaryColor: settings.primaryColor,
-            agencyName: settings.agencyName,
-          );
-        }
-      } catch (e) {
-        debugPrint('Erro ao carregar configurações: $e');
       }
     } catch (e) {
       if (mounted) {
@@ -124,6 +108,16 @@ class _LoginPageState extends State<LoginPage> {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      if (_authService.requiresFreshSignIn) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Escolha a conta Google na janela que abrir. '
+                          'Para trocar de usuário, selecione outro e-mail.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 48),
                       SizedBox(
                         width: double.infinity,
@@ -166,10 +160,10 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
-          const Positioned(
-            top: 16,
-            right: 16,
-            child: ThemeToggleButton(),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 4,
+            right: 4,
+            child: ThemeToggleButton(iconColor: theme.colorScheme.onSurface),
           ),
         ],
       ),

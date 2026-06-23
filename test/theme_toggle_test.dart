@@ -23,12 +23,12 @@ void main() {
     );
 
     expect(themeProvider.isDarkMode, isFalse);
-    expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
 
     await tester.tap(find.byType(IconButton));
     await tester.pumpAndSettle();
 
     expect(themeProvider.isDarkMode, isTrue);
-    expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
   });
 }

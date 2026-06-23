@@ -2,14 +2,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/project_production_task.dart';
+import '../models/project_category.dart';
 
 class ProjectService {
+  ProjectService({required this.agencyId});
+
+  final String agencyId;
+
   FirebaseFirestore get _db => FirebaseFirestore.instance;
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
+  Stream<QuerySnapshot>? _projectsStreamCache;
+  String? _projectsStreamAgencyId;
+
   Future<String?> addProject(Map<String, dynamic> projectData) async {
-    final user = _auth.currentUser;
-    if (user == null) return null;
+    if (_auth.currentUser == null || agencyId.isEmpty) return null;
 
     final tasks = projectData['productionTasks'];
     final progress = tasks is List
@@ -20,8 +27,10 @@ class ProjectService {
 
     final doc = await _db.collection('projects').add({
       ...projectData,
-      'agencyId': user.uid,
-      'status': projectData['status'] ?? 'Postagens',
+      'agencyId': agencyId,
+      'category': projectData['category'] ?? ProjectCategory.job.firestoreValue,
+      'status': projectData['status'] ?? 'Planejamento',
+      'boardOrder': projectData['boardOrder'] ?? DateTime.now().millisecondsSinceEpoch,
       'createdAt': FieldValue.serverTimestamp(),
       if (progress != null) 'progress': progress,
     });
@@ -29,8 +38,7 @@ class ProjectService {
   }
 
   Future<void> updateProjectStatus(String projectId, String newStatus) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    if (_auth.currentUser == null) return;
 
     await _db.collection('projects').doc(projectId).update({
       'status': newStatus,
@@ -39,8 +47,7 @@ class ProjectService {
   }
 
   Future<void> updateProject(String projectId, Map<String, dynamic> data) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    if (_auth.currentUser == null) return;
 
     await _db.collection('projects').doc(projectId).update({
       ...data,
@@ -52,18 +59,37 @@ class ProjectService {
     return _db.collection('projects').doc(projectId).snapshots();
   }
 
+  /// Stream compartilhado de projetos da agência ativa (uma query Firestore).
   Stream<QuerySnapshot> getProjectsStream() {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return const Stream.empty();
+      if (_auth.currentUser == null || agencyId.isEmpty) {
+        _clearProjectsStreamCache();
+        return const Stream.empty();
+      }
 
-      return _db
+      if (_projectsStreamCache != null && _projectsStreamAgencyId == agencyId) {
+        return _projectsStreamCache!;
+      }
+
+      _projectsStreamAgencyId = agencyId;
+      _projectsStreamCache = _db
           .collection('projects')
-          .where('agencyId', isEqualTo: user.uid)
+          .where('agencyId', isEqualTo: agencyId)
           .orderBy('createdAt', descending: true)
-          .snapshots();
+          .snapshots()
+          .asBroadcastStream();
+      return _projectsStreamCache!;
     } catch (_) {
       return const Stream.empty();
     }
+  }
+
+  void dispose() {
+    _clearProjectsStreamCache();
+  }
+
+  void _clearProjectsStreamCache() {
+    _projectsStreamCache = null;
+    _projectsStreamAgencyId = null;
   }
 }

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Etapas do fluxo operacional exibidas no dashboard (referência visual Pequi).
+/// Etapas do fluxo Kanban unificado (Job + Planejamento digital).
 enum DashboardStageId {
-  postagensDoDia,
-  criacao,
   incendios,
-  captacao,
-  edicao,
+  planejamento,
+  producao,
   aprovacao,
+  concluido,
 }
 
 class DashboardStage {
@@ -18,7 +17,7 @@ class DashboardStage {
     required this.cardBackground,
     required this.completedCardBackground,
     this.columnWidth = 200,
-    this.compactGrid = false,
+    this.isPriority = false,
   });
 
   final DashboardStageId id;
@@ -27,59 +26,51 @@ class DashboardStage {
   final Color cardBackground;
   final Color completedCardBackground;
   final double columnWidth;
-  final bool compactGrid;
+  final bool isPriority;
 
   String get storageKey => id.name;
 
   static const List<DashboardStage> workflow = [
     DashboardStage(
-      id: DashboardStageId.postagensDoDia,
-      title: 'Postagens do dia',
-      columnBackground: Color(0xFFF0D4D4),
-      cardBackground: Color(0xFFE74C4C),
-      completedCardBackground: Color(0xFF4CD97B),
-      columnWidth: 210,
-    ),
-    DashboardStage(
-      id: DashboardStageId.criacao,
-      title: 'Criação',
-      columnBackground: Color(0xFFE4E4E4),
-      cardBackground: Color(0xFFD8D8D8),
-      completedCardBackground: Color(0xFF4CD97B),
-      columnWidth: 190,
-    ),
-    DashboardStage(
       id: DashboardStageId.incendios,
-      title: 'INCÊNDIOS',
-      columnBackground: Color(0xFFE4E4E4),
+      title: '🔥 Incêndios',
+      columnBackground: Color(0xFFFCE8E8),
       cardBackground: Color(0xFFE74C4C),
       completedCardBackground: Color(0xFFE74C4C),
-      columnWidth: 190,
-      compactGrid: true,
+      columnWidth: 210,
+      isPriority: true,
     ),
     DashboardStage(
-      id: DashboardStageId.captacao,
-      title: 'Captação',
-      columnBackground: Color(0xFFE4E4E4),
-      cardBackground: Color(0xFFD8D8D8),
-      completedCardBackground: Color(0xFF4CD97B),
-      columnWidth: 190,
+      id: DashboardStageId.planejamento,
+      title: '📋 Planejamento',
+      columnBackground: Color(0xFFE8EEF5),
+      cardBackground: Color(0xFF94A3B8),
+      completedCardBackground: Color(0xFF64748B),
+      columnWidth: 200,
     ),
     DashboardStage(
-      id: DashboardStageId.edicao,
-      title: 'Edição',
+      id: DashboardStageId.producao,
+      title: '🏃 Produção',
       columnBackground: Color(0xFFE4E4E4),
       cardBackground: Color(0xFFFB923C),
       completedCardBackground: Color(0xFF4CD97B),
-      columnWidth: 190,
+      columnWidth: 200,
     ),
     DashboardStage(
       id: DashboardStageId.aprovacao,
-      title: 'Aprovação',
-      columnBackground: Color(0xFFE4E4E4),
+      title: '💬 Aprovação',
+      columnBackground: Color(0xFFF3E8FF),
       cardBackground: Color(0xFFC084FC),
       completedCardBackground: Color(0xFF4CD97B),
-      columnWidth: 190,
+      columnWidth: 200,
+    ),
+    DashboardStage(
+      id: DashboardStageId.concluido,
+      title: '✅ Concluído',
+      columnBackground: Color(0xFFE8F5EC),
+      cardBackground: Color(0xFF4CD97B),
+      completedCardBackground: Color(0xFF2EAF6A),
+      columnWidth: 200,
     ),
   ];
 

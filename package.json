@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "deploy:hosting": "flutter build web && firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.22.0"
+  }
+}

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../manager/client_service.dart';
+import '../../agency/agency_service_scope.dart';
 import '../models/client_social_link.dart';
 import '../pages/client_form_page.dart';
 import '../widgets/client_social_links_field.dart';
@@ -13,12 +15,13 @@ class ClientsPage extends StatefulWidget {
 }
 
 class _ClientsPageState extends State<ClientsPage> {
-  final ClientService _clientService = ClientService();
-
   Future<void> _openClientForm({String? docId, Map<String, dynamic>? initialData}) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => ClientFormPage(docId: docId, initialData: initialData),
+        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+          context,
+          ClientFormPage(docId: docId, initialData: initialData),
+        ),
       ),
     );
   }
@@ -43,7 +46,7 @@ class _ClientsPageState extends State<ClientsPage> {
     if (confirmed != true) return;
 
     try {
-      await _clientService.deleteClient(docId);
+      await context.read<ClientService>().deleteClient(docId);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,7 +112,7 @@ class _ClientsPageState extends State<ClientsPage> {
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _clientService.getClientsStream(),
+              stream: context.read<ClientService>().getClientsStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(

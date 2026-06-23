@@ -51,18 +51,90 @@ Mobile: retorna `null` — `google_sign_in` está no `pubspec.yaml` mas **não i
 ### Kanban custom (não `appflowy_board`)
 
 Board implementado em `dashboard_workflow_board.dart`:
-- `DragTarget` por coluna
-- Web: `Draggable` no ícone ⋮⋮
+- `DragTarget` por coluna (5 colunas unificadas)
+- Web/desktop: `Draggable` no card inteiro
 - Mobile: `LongPressDraggable` no card inteiro
 - Tap no card → `ProjectDetailPage`
+- Coluna **Incêndios** com destaque visual (`isPriority`: borda, sombra, label)
+
+**Removido:** painel lateral "Status do Projeto" (`project_status_panel.dart` — arquivo ainda no repo, não referenciado).
 
 Pacote `appflowy_board` no `pubspec.yaml` é **dependência morta**.
 
+### Categorias Job vs Planejamento digital
+
+Ambas usam a coleção `projects`. Campo `category`: `job` | `planejamento`.
+
+- **Job:** fluxo de produção (atividades, progresso)
+- **Planejamento digital:** posts (data, formato, descrição, referência, `planningStatus`)
+
+**Não** existem abas ou telas separadas na navegação — filtros `DashboardDisplayFilter` na Dashboard.
+
+### Filtros de exibição na Dashboard
+
+`DashboardDisplayFilter`: checkboxes Job / Planejamento digital.
+
+`DashboardBoardMapper.groupSnapshot(snapshot, includeJobs:, includePlanning:)` filtra por categoria antes de agrupar.
+
 ### Multi-tenancy
 
-`agencyId = FirebaseAuth.currentUser.uid` em `clients` e `projects`. Settings em `settings/{uid}`.
+**Atual (pós-3B):** `agencyId = AgencyContext.activeAgencyId` em `clients` e `projects`. Branding em `agencies/{activeAgencyId}` (3C).
 
-### Layout responsivo manual
+Papéis Fase 1: `owner`, `admin`, `member` — sem `partner`.
+
+Ver módulo `lib/core/agency/` e seção **Multi-agência** em [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
+
+### SettingsService ⚠ Legado
+
+`lib/core/settings/settings_service.dart` — **sem uso na UI após 3C**. Lido apenas no bootstrap legado via `AgencyService.loadLegacySettings(uid)` para popular `agencies/{uid}` na primeira migração.
+
+### Branding (Subetapa 3C ✅)
+
+| Componente | Função |
+|------------|--------|
+| `agencies/{activeAgencyId}` | Fonte de verdade: `name`, `primaryColor` |
+| `AgencyContext` | `activeAgencyName`, `activePrimaryColor`, `updateActiveAgencyBranding()` |
+| `AgencyBrandingSync` | Listener → `ThemeProvider.applyAgencyBranding()` |
+| `ThemeProvider` | UI: sidebar, AppBar, login panel, `MaterialApp` themes |
+| `ProfilePage` | Edição owner/admin → `updateActiveAgencyBranding` (Firestore `agencies/`) |
+
+Membro (`member`): `canManageSettings == false` → botão Configurações oculto na Dashboard.
+
+Logout: `AgencyContext.reset()` + `ThemeProvider.resetToDefaults()`.
+
+### AgencyContext (Fase 1 — Etapa 1)
+
+`lib/core/agency/agency_context.dart` — estado global:
+
+| Propriedade | Descrição |
+|-------------|-----------|
+| `activeAgencyId` | Agência em uso |
+| `activeAgency` | Branding carregado |
+| `activeMembership` | Role do usuário |
+| `memberships` | Agências do usuário |
+| `needsOnboarding` | Wizard necessário (usuário novo) |
+| `needsAgencySelection` | Seletor necessário (2+ agências) |
+| `canManageSettings` | owner ou admin |
+| `hasMultipleAgencies` | 2+ memberships (sem fallback legado) |
+| `selectAgency(id)` | Persiste `activeAgencyId` + recarrega branding |
+| `createFirstAgency` | Wizard — UUID + membership owner |
+
+Serviços: `UserService`, `AgencyService`, `MembershipService`, `AgencyBootstrapService`.
+
+### AgencyGate (Subetapas 3A–3D ✅)
+
+`lib/presentation/agency/agency_gate.dart` — após login:
+
+1. `AgencyContext.initialize(user)` → bootstrap + migração legada
+2. `needsOnboarding` → `AgencyOnboardingPage` (wizard)
+3. `needsAgencySelection` → `AgencySelectionPage`
+4. `hasActiveAgency` → `AgencyBrandingSync` + services + `MainShell` (+ `AgencySwitcher` na sidebar se 2+ agências)
+
+`ProjectService` / `ClientService` recebem `agencyId: activeAgencyId` (3B). Rotas empurradas usam `AgencyServiceScope.wrapRoute` (3B).
+
+Logout em `AuthGate` chama `AgencyContext.reset()` + `ThemeProvider.resetToDefaults()`.
+
+---
 
 | Breakpoint | Constante | Uso |
 |------------|-----------|-----|
@@ -71,25 +143,23 @@ Pacote `appflowy_board` no `pubspec.yaml` é **dependência morta**.
 | 900px | `MainShell` | Sidebar vs drawer |
 | 800px | Login | Painel branding |
 
-### SettingsService
-
-`lib/core/settings/settings_service.dart` centraliza leitura/escrita de `settings/{uid}` (`agencyName`, `primaryColor`).
-
----
+### Layout responsivo manual
 
 ## Arquitetura
 
 ```
 main.dart
   → Firebase.initializeApp
-  → ThemeProvider (+ SettingsService no boot)
+  → MultiProvider(ThemeProvider, AgencyContext)
   → MaterialApp(home: AuthGate)
        ├─ LoginPage
-       └─ MainShell
-            ├─ DashboardPage → Kanban + NewProjectDialog + ProjectDetailPage
-            ├─ ClientsPage → ClientFormPage
-            ├─ SidebarDeliveryCalendar (na sidebar)
-            └─ TeamPlaceholder
+       └─ AgencyGate (3A–3D)
+            ├─ AgencyOnboardingPage / AgencySelectionPage
+            └─ AgencyBrandingSync + MainShell (+ AgencySwitcher)
+                 ├─ DashboardPage → Kanban + NewProjectDialog + ProjectDetailPage
+                 ├─ ClientsPage → ClientFormPage
+                 ├─ SidebarDeliveryCalendar (na sidebar)
+                 └─ TeamPlaceholder
 ```
 
 ### Camadas
@@ -103,11 +173,9 @@ main.dart
 
 ### Injeção de dependências
 
-Nenhum DI container. Services instanciados inline:
+`ProjectService` e `ClientService` injetados via `MultiProvider` no `AgencyGate` (3B), com `agencyId: activeAgencyId`.
 
-```dart
-final ProjectService _projectService = ProjectService();
-```
+Rotas/dialogs empurrados recebem instâncias via `AgencyServiceScope.wrapRoute`.
 
 ---
 
@@ -123,14 +191,15 @@ final ProjectService _projectService = ProjectService();
 
 | Método | Efeito |
 |--------|--------|
-| `applySettings({primaryColor, agencyName})` | Atualiza branding |
+| `applyAgencyBranding({name, color})` | Sincroniza com `agencies/{activeAgencyId}` (3C) |
+| `resetToDefaults()` | Pequi / `#FFD700` — chamado no logout |
 | `toggleTheme()` | Alterna claro/escuro |
 
 ### Local — telas
 
 | Tela | Mecanismo |
 |------|-----------|
-| `DashboardPage` | `setState` + `StreamBuilder` projetos |
+| `DashboardPage` | `setState` + `StreamBuilder` + filtros `_showJobs` / `_showPlanning` |
 | `ProjectDetailPage` | `setState` + `StreamBuilder` documento |
 | `ClientsPage` | `StreamBuilder` clientes |
 | `ClientFormPage` | `setState` + controllers |
@@ -162,6 +231,22 @@ Deploy:
 firebase deploy --only firestore
 ```
 
+### Coleções multi-agência (Fase 1)
+
+| Coleção | Doc ID | Função |
+|---------|--------|--------|
+| `users/{uid}` | uid | Perfil + `activeAgencyId` |
+| `agencies/{agencyId}` | UUID ou uid (legado) | Branding + metadados |
+| `memberships/{agencyId}_{userId}` | composto | Permissões (owner/admin/member) |
+
+Bootstrap legado (`AgencyBootstrapService`):
+
+1. Se `settings/{uid}` ou docs com `agencyId=uid` existem → cria `agencies/{uid}` + membership owner.
+2. Se nada existe → `needsOnboarding` (wizard na Etapa 4).
+3. 1 membership → auto-seleciona; 2+ → seletor.
+
+**Rules e índices memberships:** ✅ Etapa 2 concluída. Rules transitórias com `isLegacyOwner` + membership. Backup: `docs/firestore-backup-pre-fase2.md`.
+
 ### AuthService
 
 ```dart
@@ -174,10 +259,10 @@ Future<void> signOut()
 
 | Método | Firestore |
 |--------|-----------|
-| `addProject` | `projects.add` — injeta `agencyId`, `status`, `createdAt`, `progress` |
-| `updateProjectStatus` | `projects.doc.update({status, updatedAt})` |
+| `addProject` | `projects.add` — injeta `agencyId` (= `activeAgencyId`), `category`, `status`, `createdAt`, `progress` |
+| `updateProjectStatus` | `projects.doc.update({status, updatedAt})` — legado; preferir `updateProject` |
 | `updateProject` | update parcial + `updatedAt` |
-| `getProjectsStream` | query `agencyId` + `orderBy createdAt desc` |
+| `getProjectsStream` | query `where agencyId == activeAgencyId` + `orderBy createdAt desc` |
 | `getProjectStream` | `doc.snapshots()` |
 
 ### ClientService
@@ -189,10 +274,44 @@ Future<void> signOut()
 | `getClientsStream` | query com índice composto |
 | `deleteClient` | `clients.doc.delete` |
 
-### Regras (resumo)
+### Regras (Fase 2 — transitórias)
 
-- `settings/{userId}`: read/write se `auth.uid == userId`
-- `clients`, `projects`: read/write/delete se `resource.data.agencyId == auth.uid`
+Funções centrais (`firestore.rules`):
+
+| Função | Descrição |
+|--------|-----------|
+| `isLegacyOwner(agencyId)` | `auth.uid == agencyId` — **fallback MVP** |
+| `isActiveMember(agencyId)` | membership `{agencyId}_{uid}` com `status == active` |
+| `canAccessAgency(agencyId)` | legado **OU** membro ativo |
+| `isAgencyAdmin(agencyId)` | role `owner` ou `admin` |
+| `isAgencyOwner(agencyId)` | role `owner` |
+
+| Coleção | Acesso |
+|---------|--------|
+| `users/{uid}` | próprio usuário |
+| `agencies/{id}` | membro ativo; create se `ownerId == uid`; update admin ou legado |
+| `memberships/{id}` | própria ou admin; create bootstrap owner ou admin |
+| `settings/{uid}` | **inalterado** — `auth.uid == userId` |
+| `clients`, `projects` | `canAccessAgency(agencyId)`; `agencyId` imutável no update |
+
+**TODO:** remover `isLegacyOwner` quando migração 100% + Etapa 3 estável (comentário no arquivo rules).
+
+Validação local: `node test/firestore_rules_test.mjs` (requer Node.js). Ver `docs/firestore-rules-validation-fase2.md`.
+
+### Índices compostos
+
+Arquivo: `firestore.indexes.json`. Deploy: `firebase deploy --only firestore:indexes` (ou `firebase deploy --only firestore`).
+
+| collectionGroup | Campos | Query / uso |
+|-----------------|--------|-------------|
+| `projects` | `agencyId ASC`, `createdAt DESC` | `ProjectService.getProjectsStream` |
+| `clients` | `agencyId ASC`, `createdAt DESC` | `ClientService.getClientsStream` |
+| `memberships` | `userId ASC`, `status ASC` | `MembershipService.listActiveForUser` |
+| `memberships` | `userId ASC`, `status ASC`, `joinedAt DESC` | reserva / ordenação futura |
+| `memberships` | `agencyId ASC`, `status ASC` | reserva (equipe usa `activeMemberIds`) |
+| `agency_invite_codes` | `agencyId ASC`, `status ASC` | `InviteCodeService.watchActiveForAgency` |
+
+**Índice de campo único (não versionado):** `users.email` — query `where('email', isEqualTo: …)` em `UserService.findByEmail`. O Firestore indexa automaticamente; **não** declarar em `firestore.indexes.json` (deploy rejeita com *"this index is not necessary, configure using single field index controls"*).
 
 ---
 
@@ -200,9 +319,39 @@ Future<void> signOut()
 
 ### `ProjectBoardItem` (UI)
 
-Mapeado de Firestore em `project_board_item.dart`. Campos: `id`, `title`, `clientName`, `description`, `progress`, `statusLabel`, `date`, etc.
+Mapeado de Firestore em `project_board_item.dart`.
+
+Campos comuns: `id`, `title`, `clientName`, `description`, `expectedDeliveryDate`, `statusLabel`, `progress`, `isCompleted`.
+
+Campos planejamento: `isPlanejamento`, `format`, `planningStatusLabel`, `accentColor` (cor do status).
 
 `progress` prioriza cálculo a partir de `productionTasks`; fallback para campo `progress` numérico.
+
+### `ProjectCategory`
+
+```dart
+enum ProjectCategory { job, planejamento }
+```
+
+Firestore: `category: 'job' | 'planejamento'`. Default/legado: `job`.
+
+Helper: `isPlanejamentoProject(data)`, `projectCategoryFromFirestore(value)`.
+
+### `PlanningStatus` + `PlanningFormat`
+
+Status de posts (`planning_status.dart`):
+
+| ID Firestore | Label | Cor (UI) |
+|--------------|-------|----------|
+| `pendente` | Pendente | Cinza |
+| `emProducao` | Em produção | Laranja |
+| `pronto` | Pronto | Azul |
+| `agendado` | Agendado | Roxo |
+| `publicado` | Publicado | Verde |
+
+Formatos: Feed, Reels, Stories, Carrossel, Vídeo, Outro.
+
+Sincronização ao mover no Kanban: `DashboardBoardMapper.planningStatusForStage(stage)`.
 
 ### `ProjectProductionTask`
 
@@ -252,39 +401,41 @@ Usado em: cards do Kanban, `ExpectedDeliveryDateField`, calendário lateral, `Pr
 
 | `DashboardStageId` | Título UI | `status` Firestore |
 |--------------------|-----------|-------------------|
-| `postagensDoDia` | Postagens do dia | `Postagens` |
-| `criacao` | Criação | `Criação` |
-| `incendios` | INCÊNDIOS | `Incêndios` |
-| `captacao` | Captação | `Captação` |
-| `edicao` | Edição | `Edição` |
-| `aprovacao` | Aprovação | `Aprovação` |
+| `incendios` | 🔥 Incêndios | `Incêndios` |
+| `planejamento` | 📋 Planejamento | `Planejamento` |
+| `producao` | 🏃 Produção | `Produção` |
+| `aprovacao` | 💬 Aprovação | `Aprovação` |
+| `concluido` | ✅ Concluído | `Concluído` |
 
 Mapeamento bidirecional: `DashboardBoardMapper.stageIdForStatus` / `firestoreStatusForStage`.
+
+**Legado:** `Postagens`→Planejamento; `Criação`/`Captação`/`Edição`→Produção; etc. (ver `PROJECT_CONTEXT.md`).
 
 ### Fluxo de dados
 
 ```
 getProjectsStream()
-  → DashboardBoardMapper.groupSnapshot()
+  → DashboardBoardMapper.groupSnapshot(includeJobs, includePlanning)
   → Map<stageKey, List<ProjectBoardItem>>
   → DashboardBoardLayout
-       → WorkflowColumn (desktop) ou PageView (mobile)
-       → ProjectStatusPanel (progresso %)
+       → WorkflowColumn × 5 (desktop) ou PageView (mobile)
 ```
 
 ### Criar projeto — `NewProjectDialog`
 
-Campos enviados ao Firestore:
-- `title`, `description`, `clientId`, `clientName`
-- `productionTasks[]`, `progress`
-- `expectedDeliveryDate` (via `ExpectedDeliveryDateField`)
+**SegmentedButton** escolhe categoria.
+
+**Job** → Firestore: `category: job`, `title`, `description`, `clientId`, `clientName`, `productionTasks[]`, `progress`, `expectedDeliveryDate`, `status: Planejamento`.
+
+**Planejamento digital** → `category: planejamento`, `format`, `reference`, `planningStatus`, `scheduledDate` (+ espelho `expectedDeliveryDate`), `description`, `title` opcional.
 
 ### Detalhe — `ProjectDetailPage`
 
 - Stream do documento `projects/{docId}`
-- Radio de fase → `updateProject` com novo `status`
-- Checkbox atividades → atualiza `productionTasks` + `progress`
-- Campos texto → salvar via botão Salvar
+- UI bifurcada por `_isPlanejamento`
+- **Job:** radios das 5 etapas Kanban + atividades de produção
+- **Planejamento:** chips de `PlanningStatus` + campos data/formato/referência
+- Salvar → `updateProject`
 
 ### Drag-and-drop
 
@@ -292,21 +443,21 @@ Campos enviados ao Firestore:
 // dashboard_page.dart
 _moveProject(projectId, targetStage)
   → DashboardBoardMapper.firestoreStatusForStage(targetStage)
-  → ProjectService.updateProjectStatus()
+  → DashboardBoardMapper.planningStatusForStage(targetStage)  // opcional sync
+  → ProjectService.updateProject({ status, planningStatus? })
 ```
 
 `DashboardBoardLayout` desabilita scroll do `PageView` durante drag (`_isDragging`).
 
 ### Data de entrega
 
-- Criação: `NewProjectDialog` + `ExpectedDeliveryDateField` (opcional)
-- Edição: `ProjectDetailPage` — mesmo widget
-- Persistência: `expectedDeliveryDate` como `Timestamp` no Firestore
-- Card Kanban: linha `ENTREGA PREVISTA: dd/MM/yyyy` quando definida
+- Job: `expectedDeliveryDate` via `ExpectedDeliveryDateField`
+- Planejamento: `scheduledDate` (gravado também em `expectedDeliveryDate` para calendário)
+- Card Kanban: linha `DATA: dd/MM/yyyy` quando definida
 
 ### Mobile
 
-7 páginas no carrossel: 6 colunas + painel Status. Navegação por:
+5 páginas no carrossel (uma por coluna). Navegação por:
 - `IconButton` chevron
 - `ChoiceChip` horizontal
 - Bolinhas clicáveis
@@ -352,7 +503,12 @@ Define `ColorScheme` com tokens explícitos para light/dark:
 
 ### Cards do Kanban
 
-`ProjectBoardCard` calcula cor de texto pela luminância do fundo do card (cores saturadas por estágio em `dashboard_stages.dart`). Colunas no dark mode usam `surfaceContainerHigh`; títulos usam `onSurface`.
+`ProjectBoardCard`:
+- Cores por estágio em `dashboard_stages.dart`
+- **Job:** badge check + progresso no card
+- **Planejamento:** borda/barra lateral na cor do `planningStatus`; label "PLANEJAMENTO"; exibe formato
+
+Colunas no dark mode usam `surfaceContainerHigh`; coluna Incêndios com borda/sombra vermelha.
 
 ### Toggle de tema
 
@@ -432,10 +588,12 @@ Services: `try/catch` + `debugPrint` ou retorno antecipado se `user == null`.
 
 | Arquivo | Cobertura |
 |---------|-----------|
-| `dashboard_board_mapper_test.dart` | Mapeamento status, snapshot, progresso |
+| `dashboard_board_mapper_test.dart` | Mapeamento status (incl. legado), snapshot, filtros categoria, planejamento |
 | `delivery_calendar_mapper_test.dart` | Agrupamento por data de entrega |
 | `client_social_link_test.dart` | Detecção de plataformas |
-| `dashboard_page_test.dart` | Smoke layout (viewport amplo) |
+| `dashboard_page_test.dart` | Smoke layout Kanban 5 colunas + filtros Exibir |
+| `agency_models_test.dart` | Serialização Agency/Membership, papéis Fase 1 |
+| `firestore_rules_test.mjs` | Rules Fase 2 — legado, membership, settings (requer Node.js) |
 | `theme_toggle_test.dart` | Toggle ThemeProvider |
 | `widget_test.dart` | Smoke login |
 
@@ -448,15 +606,21 @@ Testes widget **não** inicializam Firebase — `AuthGate` pode exigir mock em t
 | Necessidade | Arquivo(s) |
 |-------------|------------|
 | Tema global / contraste | `app_theme.dart`, `theme_utils.dart`, `theme_provider.dart` |
-| Auth / logout | `auth_service.dart`, `main.dart` (`AuthGate`) |
+| Auth / logout / agency gate | `auth_service.dart`, `main.dart` (`AuthGate`), `agency_gate.dart` |
 | Kanban UI | `dashboard_workflow_board.dart`, `dashboard_board_layout.dart` |
+| Filtros dashboard | `dashboard_display_filter.dart`, `dashboard_page.dart` |
 | Mapeamento colunas | `dashboard_board_mapper.dart`, `dashboard_stages.dart` |
+| Categorias / planejamento | `project_category.dart`, `planning_status.dart`, `planning_status_chip.dart` |
 | CRUD projetos | `project_service.dart`, `project_detail_page.dart`, `new_project_dialog.dart` |
 | CRUD clientes | `client_service.dart`, `client_form_page.dart` |
-| Settings agência | `settings_service.dart`, `profile_page.dart` |
+| Settings agência | `agency_context.dart`, `agency_service.dart`, `profile_page.dart`; legado bootstrap: `settings_service.dart` |
+| Branding sync | `agency_branding_sync.dart`, `theme_provider.dart`, `agency_gate.dart` |
+| Onboarding / seletor / switcher | `agency_onboarding_page.dart`, `agency_selection_page.dart`, `agency_switcher.dart` |
+| Multi-agência / permissões | `lib/core/agency/` |
+| Bootstrap / migração legada | `agency_bootstrap_service.dart` |
 | Calendário entregas | `sidebar_delivery_calendar.dart`, `delivery_calendar_mapper.dart` |
 | Datas | `date_format_utils.dart`, `expected_delivery_date_field.dart` |
-| Firestore rules/indexes | `firestore.rules`, `firestore.indexes.json` |
+| Firestore rules/indexes | `firestore.rules`, `firestore.indexes.json`, `docs/firestore-backup-pre-fase2.md` |
 | Shell / menu | `main_shell.dart` |
 | Roadmap | `NEXT_STEPS.md` |
 
@@ -466,15 +630,18 @@ Testes widget **não** inicializam Firebase — `AuthGate` pode exigir mock em t
 
 - Substituição do board `appflowy_board` por implementação custom
 - Sync completo projetos ↔ Firestore
-- `ProjectDetailPage` com atividades de produção
-- CRUD clientes + redes sociais
-- `AuthGate`, logout, `firestore.rules`, índices
+- **Redesign Kanban:** 5 colunas unificadas (Incêndios → Concluído); Job + Planejamento no mesmo board
+- **Categorias de projeto:** `job` e `planejamento` com formulários condicionais
+- **Filtros Exibir:** Job / Planejamento digital na Dashboard (sem abas separadas)
+- Remoção do painel "Status do Projeto" e colunas legadas (Postagens, Criação, Captação, Edição separadas)
+- Coluna Incêndios com destaque visual de prioridade
+- `ProjectDetailPage` com UI bifurcada por categoria
+- `planningStatus`, `format`, `reference`, `scheduledDate` em `projects`
+- Mapeamento de status legados em `DashboardBoardMapper`
 - `AppTheme` expandido para legibilidade dark/light
-- Carrossel mobile com navegação explícita
-- Correção imports `project_board_item.dart` (build Web)
+- Carrossel mobile com 5 colunas
 - Calendário lateral de entregas previstas na sidebar
 - `DateFormatUtils` unificado para Firestore e UI
-- Teste `delivery_calendar_mapper_test.dart`
 
 ---
 

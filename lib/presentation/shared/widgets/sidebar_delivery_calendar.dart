@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/utils/date_format_utils.dart';
 import '../../projects/manager/project_service.dart';
@@ -24,8 +25,6 @@ class SidebarDeliveryCalendar extends StatefulWidget {
 }
 
 class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
-  final ProjectService _projectService = ProjectService();
-
   late DateTime _focusedMonth;
   DateTime? _selectedDay;
 
@@ -75,7 +74,7 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: _projectService.getProjectsStream(),
+      stream: context.read<ProjectService>().getProjectsStream(),
       builder: (context, snapshot) {
         final grouped = snapshot.hasData
             ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)

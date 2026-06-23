@@ -13,10 +13,10 @@ class ThemeToggleButton extends StatelessWidget {
     final isDark = themeProvider.isDarkMode;
 
     return IconButton(
-      tooltip: isDark ? 'Tema claro' : 'Tema escuro',
+      tooltip: isDark ? 'Tema escuro' : 'Tema claro',
       onPressed: themeProvider.toggleTheme,
       icon: Icon(
-        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
         color: iconColor,
       ),
     );

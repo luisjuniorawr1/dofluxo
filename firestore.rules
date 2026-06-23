@@ -2,30 +2,251 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(agencyId) {
-      return isSignedIn() && request.auth.uid == agencyId;
+    function membershipId(agencyId) {
+      return agencyId + '_' + request.auth.uid;
+    }
+
+    function membership(agencyId) {
+      return get(/databases/$(database)/documents/memberships/$(membershipId(agencyId)));
+    }
+
+    function isActiveMember(agencyId) {
+      return isSignedIn()
+        && membership(agencyId).exists
+        && membership(agencyId).data.status == 'active';
+    }
+
+    function isAgencyOwnerByDoc(agencyId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/agencies/$(agencyId))
+        && get(/databases/$(database)/documents/agencies/$(agencyId)).data.ownerId == request.auth.uid;
+    }
+
+    function canAccessAgency(agencyId) {
+      return isActiveMember(agencyId) || isAgencyOwnerByDoc(agencyId);
+    }
+
+    function memberRole(agencyId) {
+      return membership(agencyId).data.role;
+    }
+
+    function isAgencyOwner(agencyId) {
+      return isActiveMember(agencyId) && memberRole(agencyId) == 'owner';
+    }
+
+    function isAgencyAdmin(agencyId) {
+      return isActiveMember(agencyId)
+        && (memberRole(agencyId) == 'owner' || memberRole(agencyId) == 'admin');
+    }
+
+    /// Dono (via doc da agência) ou admin/owner (via membership).
+    function canManageAgency(agencyId) {
+      return isAgencyAdmin(agencyId) || isAgencyOwnerByDoc(agencyId);
+    }
+
+    function agencyIdUnchanged() {
+      return request.resource.data.agencyId == resource.data.agencyId;
+    }
+
+    function membershipCoreFieldsUnchanged() {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.agencyId == resource.data.agencyId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status;
+    }
+
+    function isOwnMembershipDoc(membershipDocId) {
+      return membershipDocId.matches('.*_' + request.auth.uid + '$');
+    }
+
+    function membershipIdentityUnchanged() {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.agencyId == resource.data.agencyId;
+    }
+
+    function adminCanManageMembership() {
+      return isAgencyAdmin(resource.data.agencyId)
+        && (
+          resource.data.role != 'owner'
+          || request.resource.data.role == 'owner'
+        );
+    }
+
+    function inviteCodeDoc(code) {
+      return get(/databases/$(database)/documents/agency_invite_codes/$(code));
+    }
+
+    function isInviteNotExpired(code) {
+      return inviteCodeDoc(code).exists
+        && (
+          !('expiresAt' in inviteCodeDoc(code).data)
+          || inviteCodeDoc(code).data.expiresAt > request.time
+        );
+    }
+
+    function isValidInviteRedeem(code, agencyId, role) {
+      return inviteCodeDoc(code).exists
+        && inviteCodeDoc(code).data.agencyId == agencyId
+        && inviteCodeDoc(code).data.role == role
+        && inviteCodeDoc(code).data.role != 'owner'
+        && (
+          inviteCodeDoc(code).data.status == 'active'
+          || (
+            inviteCodeDoc(code).data.status == 'used'
+            && inviteCodeDoc(code).data.get('usedBy', '') == request.auth.uid
+          )
+        )
+        && isInviteNotExpired(code);
+    }
+
+    function userJoiningAgency(agencyId) {
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['activeMemberIds', 'updatedAt'])
+        && request.auth.uid in request.resource.data.activeMemberIds;
+    }
+
+    function userActivatingViaInvite(code) {
+      return isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status != 'active'
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.agencyId == resource.data.agencyId
+        && request.resource.data.status == 'active'
+        && request.resource.data.role != 'owner'
+        && request.resource.data.inviteCode is string
+        && isValidInviteRedeem(
+          code,
+          request.resource.data.agencyId,
+          request.resource.data.role
+        );
+    }
+
+    function agencyIndexFieldsUpdate(agencyId) {
+      return canManageAgency(agencyId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['activeMemberIds', 'activeInviteCodes', 'updatedAt']);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /agencies/{agencyId} {
+      // Novo membro precisa ler o doc para o update em userJoiningAgency (regra do Firestore).
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAgencyAdmin(agencyId)
+        || isAgencyOwnerByDoc(agencyId)
+        || userJoiningAgency(agencyId)
+        || agencyIndexFieldsUpdate(agencyId);
+      allow delete: if isAgencyOwner(agencyId) || isAgencyOwnerByDoc(agencyId);
+    }
+
+    match /memberships/{membershipDocId} {
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+        || canAccessAgency(resource.data.agencyId)
+      );
+      allow get: if isSignedIn() && (
+        isOwnMembershipDoc(membershipDocId)
+        || (resource != null && isAgencyAdmin(resource.data.agencyId))
+        || (resource != null && canAccessAgency(resource.data.agencyId))
+      );
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.userId == request.auth.uid
+          && request.resource.data.role == 'owner'
+          && request.resource.data.status == 'active'
+          && membershipDocId == membershipId(request.resource.data.agencyId)
+          && isAgencyOwnerByDoc(request.resource.data.agencyId)
+        )
+        || isAgencyAdmin(request.resource.data.agencyId)
+        || (
+          request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'active'
+          && request.resource.data.role != 'owner'
+          && membershipDocId == membershipId(request.resource.data.agencyId)
+          && request.resource.data.inviteCode is string
+          && isValidInviteRedeem(
+            request.resource.data.inviteCode,
+            request.resource.data.agencyId,
+            request.resource.data.role
+          )
+        )
+      );
+      allow update: if isSignedIn()
+        && membershipIdentityUnchanged()
+        && (
+          (resource.data.userId == request.auth.uid && membershipCoreFieldsUnchanged())
+          || adminCanManageMembership()
+          || (
+            resource.data.userId == request.auth.uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.status == 'removed'
+          )
+          || (
+            request.resource.data.inviteCode is string
+            && userActivatingViaInvite(request.resource.data.inviteCode)
+          )
+        );
+      allow delete: if false;
     }
 
     match /settings/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if false;
     }
 
     match /clients/{clientId} {
-      allow read, delete: if isOwner(resource.data.agencyId);
-      allow create: if isOwner(request.resource.data.agencyId);
-      allow update: if isOwner(resource.data.agencyId)
-        && request.resource.data.agencyId == resource.data.agencyId;
+      allow list: if isSignedIn() && canAccessAgency(resource.data.agencyId);
+      allow get: if canAccessAgency(resource.data.agencyId);
+      allow create: if canAccessAgency(request.resource.data.agencyId);
+      allow update: if canAccessAgency(resource.data.agencyId) && agencyIdUnchanged();
+      allow delete: if canAccessAgency(resource.data.agencyId);
     }
 
     match /projects/{projectId} {
-      allow read, delete: if isOwner(resource.data.agencyId);
-      allow create: if isOwner(request.resource.data.agencyId);
-      allow update: if isOwner(resource.data.agencyId)
-        && request.resource.data.agencyId == resource.data.agencyId;
+      allow list: if isSignedIn() && canAccessAgency(resource.data.agencyId);
+      allow get: if canAccessAgency(resource.data.agencyId);
+      allow create: if canAccessAgency(request.resource.data.agencyId);
+      allow update: if canAccessAgency(resource.data.agencyId) && agencyIdUnchanged();
+      allow delete: if canAccessAgency(resource.data.agencyId);
+    }
+
+    match /agency_invite_codes/{code} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && canManageAgency(resource.data.agencyId);
+      allow create: if isSignedIn()
+        && canManageAgency(request.resource.data.agencyId)
+        && request.resource.data.status == 'active'
+        && request.resource.data.role != 'owner'
+        && request.resource.data.createdBy == request.auth.uid
+        && code == request.resource.data.code;
+      allow update: if isSignedIn() && (
+        (
+          canManageAgency(resource.data.agencyId)
+          && resource.data.status == 'active'
+          && request.resource.data.status == 'revoked'
+          && request.resource.data.agencyId == resource.data.agencyId
+          && request.resource.data.role == resource.data.role
+        )
+        || (
+          resource.data.status == 'active'
+          && request.resource.data.status == 'used'
+          && request.resource.data.usedBy == request.auth.uid
+        )
+      );
+      allow delete: if false;
     }
   }
 }

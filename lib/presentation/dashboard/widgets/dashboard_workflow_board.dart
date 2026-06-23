@@ -6,6 +6,7 @@ import '../config/dashboard_layout_breakpoints.dart';
 import '../config/dashboard_stages.dart';
 import '../../../core/utils/theme_utils.dart';
 import '../models/project_board_item.dart';
+import '../utils/board_order_utils.dart';
 import 'project_board_card.dart';
 
 bool _useImmediateDrag() {
@@ -15,8 +16,16 @@ bool _useImmediateDrag() {
       defaultTargetPlatform == TargetPlatform.linux;
 }
 
-typedef ProjectMoveCallback = Future<void> Function(String projectId, DashboardStageId targetStage);
+typedef ProjectMoveCallback = Future<void> Function(
+  String projectId,
+  DashboardStageId targetStage,
+  int insertIndex,
+  double boardOrder,
+);
+
 typedef ProjectTapCallback = void Function(String projectId);
+typedef ProjectDragStartedCallback = void Function(String projectId);
+typedef ProjectDragEndedCallback = VoidCallback;
 
 class ProjectDragData {
   const ProjectDragData({
@@ -32,67 +41,12 @@ class ProjectDragData {
   final DashboardStage stage;
 }
 
-/// Coluna Criação + INCÊNDIOS empilhadas (referência Pequi).
-class WorkflowCriacaoIncendiosColumn extends StatelessWidget {
-  const WorkflowCriacaoIncendiosColumn({
-    super.key,
-    required this.criacaoStage,
-    required this.incendiosStage,
-    required this.criacaoItems,
-    required this.incendiosItems,
-    this.onProjectMove,
-    this.onProjectTap,
-    this.onDragStarted,
-    this.onDragEnded,
-  });
-
-  final DashboardStage criacaoStage;
-  final DashboardStage incendiosStage;
-  final List<ProjectBoardItem> criacaoItems;
-  final List<ProjectBoardItem> incendiosItems;
-  final ProjectMoveCallback? onProjectMove;
-  final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 3,
-          child: WorkflowColumn(
-            stage: criacaoStage,
-            items: criacaoItems,
-            onProjectMove: onProjectMove,
-            onProjectTap: onProjectTap,
-            onDragStarted: onDragStarted,
-            onDragEnded: onDragEnded,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          flex: 2,
-          child: WorkflowColumn(
-            stage: incendiosStage,
-            items: incendiosItems,
-            onProjectMove: onProjectMove,
-            onProjectTap: onProjectTap,
-            onDragStarted: onDragStarted,
-            onDragEnded: onDragEnded,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class WorkflowColumn extends StatelessWidget {
   const WorkflowColumn({
     super.key,
     required this.stage,
     required this.items,
+    required this.draggingProjectId,
     this.onProjectMove,
     this.onProjectTap,
     this.onDragStarted,
@@ -102,10 +56,11 @@ class WorkflowColumn extends StatelessWidget {
 
   final DashboardStage stage;
   final List<ProjectBoardItem> items;
+  final ValueListenable<String?> draggingProjectId;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
   final bool isMobileCarousel;
 
   @override
@@ -118,88 +73,258 @@ class WorkflowColumn extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final feedbackWidth = constraints.maxWidth > 0 ? constraints.maxWidth - 24 : stage.columnWidth;
+        final feedbackWidth =
+            constraints.maxWidth > 0 ? constraints.maxWidth - 24 : stage.columnWidth;
 
         return Container(
           width: constraints.maxWidth > 0 ? constraints.maxWidth : null,
           decoration: BoxDecoration(
             color: columnColor,
             borderRadius: BorderRadius.circular(20),
+            border: stage.isPriority
+                ? Border.all(
+                    color: isDark ? const Color(0xFFE74C4C) : const Color(0xFFDC2626),
+                    width: 2.5,
+                  )
+                : null,
+            boxShadow: stage.isPriority
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFE74C4C).withValues(alpha: isDark ? 0.25 : 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                stage.title,
-                style: ThemeUtils.sectionTitle(context),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      stage.title,
+                      style: ThemeUtils.sectionTitle(context).copyWith(
+                        color: stage.isPriority && !isDark
+                            ? const Color(0xFFB91C1C)
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (items.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${items.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                ],
               ),
+              if (stage.isPriority) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Prioridade máxima',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Expanded(
-                child: DragTarget<ProjectDragData>(
-                  onWillAcceptWithDetails: (details) {
-                    if (onProjectMove == null) return false;
-                    return details.data.fromStageId != stage.id;
-                  },
-                  onAcceptWithDetails: (details) {
-                    onProjectMove?.call(details.data.projectId, stage.id);
-                  },
-                  builder: (context, candidate, rejected) {
-                    final isHighlighted = candidate.isNotEmpty;
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: draggingProjectId,
+                  builder: (context, draggingId, _) {
+                    final isDragging = draggingId != null;
+                    final visibleItems = draggingId == null
+                        ? items
+                        : items.where((item) => item.id != draggingId).toList();
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: isHighlighted
-                            ? Border.all(color: AgencyThemeColors.of(context).contentAccent, width: 2)
-                            : null,
-                      ),
-                      child: items.isEmpty
-                          ? Center(
-                              child: Text(
-                                isHighlighted ? 'Solte aqui' : 'Vazio',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            )
-                          : stage.compactGrid
-                              ? _IncendiosGrid(
-                                  items: items,
+                    if (visibleItems.isEmpty) {
+                      return _CardDropSlot(
+                        insertIndex: 0,
+                        stage: stage,
+                        columnItems: items,
+                        isDragging: isDragging,
+                        isExpandedEmpty: true,
+                        onProjectMove: onProjectMove,
+                      );
+                    }
+
+                    return CustomScrollView(
+                      physics: isMobileCarousel
+                          ? const BouncingScrollPhysics()
+                          : const ClampingScrollPhysics(),
+                      slivers: [
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              if (index.isEven) {
+                                return _CardDropSlot(
+                                  insertIndex: index ~/ 2,
                                   stage: stage,
-                                  feedbackWidth: feedbackWidth,
+                                  columnItems: items,
+                                  isDragging: isDragging,
                                   onProjectMove: onProjectMove,
-                                  onProjectTap: onProjectTap,
-                                  onDragStarted: onDragStarted,
-                                  onDragEnded: onDragEnded,
-                                  isMobileCarousel: isMobileCarousel,
-                                )
-                              : ListView.separated(
-                                  physics: isMobileCarousel
-                                      ? const BouncingScrollPhysics()
-                                      : const ClampingScrollPhysics(),
-                                  itemCount: items.length,
-                                  separatorBuilder: (context, index) => const SizedBox(height: 8),
-                                  itemBuilder: (context, index) {
-                                    return _DraggableProjectCard(
-                                      item: items[index],
-                                      stage: stage,
-                                      feedbackWidth: feedbackWidth,
-                                      onProjectMove: onProjectMove,
-                                      onProjectTap: onProjectTap,
-                                      onDragStarted: onDragStarted,
-                                      onDragEnded: onDragEnded,
-                                      isMobileCarousel: isMobileCarousel,
-                                    );
-                                  },
+                                );
+                              }
+
+                              final item = visibleItems[index ~/ 2];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 1),
+                                child: RepaintBoundary(
+                                  child: _DraggableProjectCard(
+                                    item: item,
+                                    stage: stage,
+                                    feedbackWidth: feedbackWidth,
+                                    onProjectMove: onProjectMove,
+                                    onProjectTap: onProjectTap,
+                                    onDragStarted: onDragStarted,
+                                    onDragEnded: onDragEnded,
+                                    isMobileCarousel: isMobileCarousel,
+                                  ),
                                 ),
+                              );
+                            },
+                            childCount: visibleItems.length * 2 + 1,
+                          ),
+                        ),
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _CardDropSlot(
+                            insertIndex: visibleItems.length,
+                            stage: stage,
+                            columnItems: items,
+                            isDragging: isDragging,
+                            fillRemaining: true,
+                            onProjectMove: onProjectMove,
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+}
+
+class _CardDropSlot extends StatelessWidget {
+  const _CardDropSlot({
+    required this.insertIndex,
+    required this.stage,
+    required this.columnItems,
+    required this.isDragging,
+    this.isExpandedEmpty = false,
+    this.fillRemaining = false,
+    this.onProjectMove,
+  });
+
+  final int insertIndex;
+  final DashboardStage stage;
+  final List<ProjectBoardItem> columnItems;
+  final bool isDragging;
+  final bool isExpandedEmpty;
+  final bool fillRemaining;
+  final ProjectMoveCallback? onProjectMove;
+
+  void _handleAccept(ProjectDragData data) {
+    final fromIndex = columnItems.indexWhere((item) => item.id == data.projectId);
+    final isSameColumn = data.fromStageId == stage.id;
+
+    if (isSameColumn && fromIndex != -1) {
+      if (insertIndex == fromIndex || insertIndex == fromIndex + 1) return;
+    }
+
+    final boardOrder = BoardOrderUtils.orderForInsertIndex(
+      columnItems: columnItems,
+      insertIndex: insertIndex,
+      draggedProjectId: data.projectId,
+    );
+
+    onProjectMove?.call(data.projectId, stage.id, insertIndex, boardOrder);
+  }
+
+  Widget _buildIndicator(BuildContext context, Color accent, {bool fullWidth = false}) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      height: 3,
+      margin: EdgeInsets.symmetric(horizontal: fullWidth ? 8 : 4),
+      decoration: BoxDecoration(
+        color: accent,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.35),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = AgencyThemeColors.of(context).contentAccent;
+
+    return DragTarget<ProjectDragData>(
+      onWillAcceptWithDetails: (_) => onProjectMove != null,
+      onAcceptWithDetails: (details) => _handleAccept(details.data),
+      builder: (context, candidate, rejected) {
+        final isActive = candidate.isNotEmpty;
+
+        if (isExpandedEmpty) {
+          return SizedBox.expand(
+            child: Center(
+              child: isActive
+                  ? _buildIndicator(context, accent, fullWidth: true)
+                  : Text(
+                      'Vazio',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
+          );
+        }
+
+        if (fillRemaining) {
+          return SizedBox.expand(
+            child: Align(
+              alignment: isActive ? Alignment.topCenter : Alignment.center,
+              child: isActive
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: _buildIndicator(context, accent, fullWidth: true),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          );
+        }
+
+        final slotHeight = isActive
+            ? 14.0
+            : isDragging
+                ? 10.0
+                : 1.0;
+
+        return SizedBox(
+          height: slotHeight,
+          child: isActive
+              ? Center(child: _buildIndicator(context, accent))
+              : const SizedBox.shrink(),
         );
       },
     );
@@ -215,7 +340,6 @@ class _DraggableProjectCard extends StatelessWidget {
     this.onProjectTap,
     this.onDragStarted,
     this.onDragEnded,
-    this.compact = false,
     this.isMobileCarousel = false,
   });
 
@@ -224,14 +348,13 @@ class _DraggableProjectCard extends StatelessWidget {
   final double feedbackWidth;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
-  final bool compact;
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
   final bool isMobileCarousel;
 
   @override
   Widget build(BuildContext context) {
-    final card = ProjectBoardCard(item: item, stage: stage, compact: compact);
+    final card = ProjectBoardCard(item: item);
     final isMobileLayout = isMobileCarousel ||
         MediaQuery.sizeOf(context).width < DashboardLayoutBreakpoints.mobileCarousel;
 
@@ -242,7 +365,7 @@ class _DraggableProjectCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onProjectTap != null ? openProject : null,
-          borderRadius: BorderRadius.circular(compact ? 12 : 16),
+          borderRadius: BorderRadius.circular(16),
           child: child,
         ),
       );
@@ -257,27 +380,31 @@ class _DraggableProjectCard extends StatelessWidget {
       stage: stage,
     );
 
-    final feedback = Material(
-      elevation: 8,
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        width: feedbackWidth,
-        child: Opacity(opacity: 0.92, child: card),
+    final feedback = RepaintBoundary(
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          width: feedbackWidth,
+          child: ProjectBoardCard(item: item, compact: true),
+        ),
       ),
     );
 
-    final childWhenDragging = Opacity(opacity: 0.35, child: buildTappable(card));
-
+    void startDrag() => onDragStarted?.call(item.id);
     void endDrag([DraggableDetails? _]) => onDragEnded?.call();
 
     if (isMobileLayout || !_useImmediateDrag()) {
       return LongPressDraggable<ProjectDragData>(
         data: dragData,
         feedback: feedback,
-        childWhenDragging: childWhenDragging,
-        onDragStarted: onDragStarted,
+        delay: const Duration(milliseconds: 120),
+        hapticFeedbackOnStart: false,
+        onDragStarted: startDrag,
+        onDragCompleted: endDrag,
         onDragEnd: endDrag,
-        onDraggableCanceled: (_, __) => endDrag(),
+        onDraggableCanceled: (_, _) => endDrag(),
         child: buildTappable(card),
       );
     }
@@ -288,63 +415,13 @@ class _DraggableProjectCard extends StatelessWidget {
         data: dragData,
         dragAnchorStrategy: pointerDragAnchorStrategy,
         feedback: feedback,
-        childWhenDragging: childWhenDragging,
-        onDragStarted: onDragStarted,
+        maxSimultaneousDrags: 1,
+        onDragStarted: startDrag,
+        onDragCompleted: endDrag,
         onDragEnd: endDrag,
-        onDraggableCanceled: (_, __) => endDrag(),
+        onDraggableCanceled: (_, _) => endDrag(),
         child: buildTappable(card),
       ),
-    );
-  }
-}
-
-class _IncendiosGrid extends StatelessWidget {
-  const _IncendiosGrid({
-    required this.items,
-    required this.stage,
-    required this.feedbackWidth,
-    this.onProjectMove,
-    this.onProjectTap,
-    this.onDragStarted,
-    this.onDragEnded,
-    this.isMobileCarousel = false,
-  });
-
-  final List<ProjectBoardItem> items;
-  final DashboardStage stage;
-  final double feedbackWidth;
-  final ProjectMoveCallback? onProjectMove;
-  final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
-  final bool isMobileCarousel;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: isMobileCarousel
-          ? const BouncingScrollPhysics()
-          : const ClampingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.82,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        return _DraggableProjectCard(
-          item: items[index],
-          stage: stage,
-          feedbackWidth: feedbackWidth / 2,
-          onProjectMove: onProjectMove,
-          onProjectTap: onProjectTap,
-          onDragStarted: onDragStarted,
-          onDragEnded: onDragEnded,
-          compact: true,
-          isMobileCarousel: isMobileCarousel,
-        );
-      },
     );
   }
 }

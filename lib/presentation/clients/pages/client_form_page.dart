@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../manager/client_service.dart';
 import '../models/client_social_link.dart';
 import '../widgets/client_social_links_field.dart';
@@ -22,7 +23,6 @@ class ClientFormPage extends StatefulWidget {
 
 class _ClientFormPageState extends State<ClientFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _clientService = ClientService();
 
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
@@ -88,9 +88,9 @@ class _ClientFormPageState extends State<ClientFormPage> {
       final payload = _buildPayload();
 
       if (widget.isEditing) {
-        await _clientService.updateClient(widget.docId!, payload);
+        await context.read<ClientService>().updateClient(widget.docId!, payload);
       } else {
-        await _clientService.addClient(payload);
+        await context.read<ClientService>().addClient(payload);
       }
 
       if (mounted) {
