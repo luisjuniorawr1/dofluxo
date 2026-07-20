@@ -5,7 +5,6 @@ import '../../../core/utils/date_format_utils.dart';
 import '../../projects/models/planning_status.dart';
 import '../../projects/models/project_category.dart';
 import '../../projects/models/project_production_task.dart';
-import '../config/dashboard_stages.dart';
 import '../utils/dashboard_board_mapper.dart';
 
 /// Item exibido no quadro Kanban do dashboard.
@@ -130,9 +129,7 @@ class ProjectBoardItem {
 
     final firestoreStatus = data['status'] as String?;
     final stageId = DashboardBoardMapper.stageIdForStatus(firestoreStatus, data: data);
-    final isCompleted = data['isCompleted'] == true ||
-        DashboardBoardMapper.isCompletedStatus(firestoreStatus) ||
-        stageId == DashboardStageId.concluido;
+    final isCompleted = DashboardBoardMapper.isProjectConcludedFromData(data);
 
     final planningStatus = PlanningStatus.fromFirestore(data['planningStatus'] as String?);
 
@@ -169,8 +166,7 @@ class ProjectBoardItem {
   }
 
   static String? _readExpectedDeliveryDate(Map<String, dynamic> data) {
-    final parsed = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']) ??
-        DateFormatUtils.fromFirestore(data['scheduledDate']);
+    final parsed = DateFormatUtils.projectDeliveryDate(data);
     if (parsed != null) return DateFormatUtils.formatDayMonthYear(parsed);
     return null;
   }

@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/agency_theme_colors.dart';
-import '../../../core/utils/theme_utils.dart';
 import '../config/dashboard_layout_breakpoints.dart';
-import '../config/dashboard_stages.dart';
+import '../config/dashboard_zones.dart';
+import '../config/kanban_constants.dart';
 import '../models/project_board_item.dart';
-import 'dashboard_workflow_board.dart';
+import '../utils/board_order_utils.dart';
+import 'kanban_column.dart';
+import 'project_board_card.dart';
 
-/// Layout responsivo do Kanban: 5 colunas no desktop e carrossel no mobile.
+typedef ProjectMoveCallback = Future<void> Function(
+  String projectId,
+  DashboardZoneId targetZone,
+  int insertIndex,
+  double boardOrder,
+);
+
+typedef ProjectTapCallback = void Function(String projectId);
+
+/// Layout do wireframe: espelhos | gap | workflow | status.
 class DashboardBoardLayout extends StatefulWidget {
   const DashboardBoardLayout({
     super.key,
-    required this.itemsByStage,
+    required this.itemsByZone,
     this.onProjectMove,
     this.onProjectTap,
   });
 
-  final Map<String, List<ProjectBoardItem>> itemsByStage;
+  final Map<String, List<ProjectBoardItem>> itemsByZone;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
 
@@ -26,11 +36,13 @@ class DashboardBoardLayout extends StatefulWidget {
 
 class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   late final PageController _pageController;
-  final ValueNotifier<String?> _draggingProjectId = ValueNotifier(null);
+  final ValueNotifier<String?> _draggingItemId = ValueNotifier(null);
   final ValueNotifier<bool> _isDragging = ValueNotifier(false);
   int _currentPage = 0;
 
-  static const _mobilePageCount = 5;
+  /// Estado otimista: posiciona o card no destino na hora do drop, antes de o
+  /// Firestore confirmar (evita o card "sumir e reaparecer").
+  Map<String, List<ProjectBoardItem>>? _optimisticBoard;
 
   @override
   void initState() {
@@ -40,35 +52,129 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
     );
   }
 
-  void _onDragStarted(String projectId) {
-    _draggingProjectId.value = projectId;
-    _isDragging.value = true;
+  @override
+  void didUpdateWidget(covariant DashboardBoardLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Novo snapshot do servidor chegou: passa a ser a fonte da verdade.
+    if (!identical(oldWidget.itemsByZone, widget.itemsByZone)) {
+      _optimisticBoard = null;
+    }
   }
-
-  void _onDragEnded() {
-    _draggingProjectId.value = null;
-    _isDragging.value = false;
-  }
-
-  void _goToPage(int index) {
-    if (index < 0 || index >= _mobilePageCount) return;
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  void _goToPreviousPage() => _goToPage(_currentPage - 1);
-
-  void _goToNextPage() => _goToPage(_currentPage + 1);
 
   @override
   void dispose() {
     _pageController.dispose();
-    _draggingProjectId.dispose();
+    _draggingItemId.dispose();
     _isDragging.dispose();
     super.dispose();
+  }
+
+  Map<String, List<ProjectBoardItem>> get _displayedBoard =>
+      _optimisticBoard ?? widget.itemsByZone;
+
+  void _onDragStarted(String itemId) {
+    _draggingItemId.value = itemId;
+    _isDragging.value = true;
+  }
+
+  void _onDragEnded() {
+    _draggingItemId.value = null;
+    _isDragging.value = false;
+  }
+
+  void _applyOptimisticMove(
+    ProjectBoardItem item,
+    String targetColumnId,
+    int insertIndex,
+  ) {
+    final base = _displayedBoard;
+    final clone = <String, List<ProjectBoardItem>>{
+      for (final entry in base.entries)
+        entry.key: List<ProjectBoardItem>.from(entry.value),
+    };
+
+    // Remove a ocorrência de workflow (espelhos são read-only e ficam intactos).
+    for (final column in KanbanConstants.allZones) {
+      if (column.isMirror) continue;
+      clone[column.id]?.removeWhere((i) => i.id == item.id);
+    }
+
+    final target = clone[targetColumnId];
+    if (target != null) {
+      final idx = insertIndex.clamp(0, target.length);
+      target.insert(idx, item);
+    }
+
+    setState(() => _optimisticBoard = clone);
+  }
+
+  Future<void> _handleMove(
+    ProjectBoardItem item,
+    String targetColumnId,
+    int targetIndex,
+  ) async {
+    final onMove = widget.onProjectMove;
+    if (onMove == null) return;
+
+    final zone = KanbanConstants.findById(targetColumnId)?.zoneId;
+    if (zone == null || !zone.acceptsDragDrop) return;
+
+    final columnItems = _displayedBoard[targetColumnId] ?? const [];
+    final boardOrder = BoardOrderUtils.orderForInsertIndex(
+      columnItems: columnItems,
+      insertIndex: targetIndex,
+      draggedProjectId: item.id,
+    );
+
+    _applyOptimisticMove(item, targetColumnId, targetIndex);
+    _onDragEnded();
+
+    await onMove(item.id, zone, targetIndex, boardOrder);
+  }
+
+  Widget _buildCard(BuildContext context, KanbanColumnConfig column, ProjectBoardItem item) {
+    return ProjectBoardCard(
+      item: item,
+      zoneCardColor: column.cardHeaderColor,
+    );
+  }
+
+  KanbanColumn<ProjectBoardItem> _buildZone(
+    KanbanColumnConfig column, {
+    bool isMobileCarousel = false,
+  }) {
+    return KanbanColumn<ProjectBoardItem>(
+      column: column,
+      items: _displayedBoard[column.id] ?? const [],
+      itemId: (item) => item.id,
+      cardBuilder: (context, item) => _buildCard(context, column, item),
+      draggingItemId: _draggingItemId,
+      onMove: widget.onProjectMove == null ? null : _handleMove,
+      onTap: widget.onProjectTap == null ? null : (item) => widget.onProjectTap!(item.id),
+      onDragStarted: _onDragStarted,
+      onDragEnded: _onDragEnded,
+      isMobileCarousel: isMobileCarousel,
+    );
+  }
+
+  Widget _buildStackedGroup(DashboardColumnGroup group, {bool isMobileCarousel = false}) {
+    final zones = group.zones;
+    if (zones.length == 1) {
+      return _buildZone(zones.first.column, isMobileCarousel: isMobileCarousel);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < zones.length; i++) ...[
+          if (i > 0) const SizedBox(height: KanbanConstants.stackedZoneGap),
+          Expanded(
+            flex: zones[i].column.stackFlex,
+            child: _buildZone(zones[i].column, isMobileCarousel: isMobileCarousel),
+          ),
+        ],
+      ],
+    );
   }
 
   @override
@@ -82,72 +188,38 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
             pageController: _pageController,
             currentPage: _currentPage,
             isDragging: _isDragging,
-            draggingProjectId: _draggingProjectId,
             onPageChanged: (index) => setState(() => _currentPage = index),
-            onGoToPage: _goToPage,
-            onPreviousPage: _goToPreviousPage,
-            onNextPage: _goToNextPage,
-            itemsByStage: widget.itemsByStage,
-            onProjectMove: widget.onProjectMove,
-            onProjectTap: widget.onProjectTap,
-            onDragStarted: _onDragStarted,
-            onDragEnded: _onDragEnded,
+            onGoToPage: (index) {
+              if (index < 0 || index >= KanbanConstants.mobileZones.length) return;
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+              );
+            },
+            buildZone: (column) => _buildZone(column, isMobileCarousel: true),
           );
         }
 
-        return _DesktopBoard(
-          itemsByStage: widget.itemsByStage,
-          draggingProjectId: _draggingProjectId,
-          onProjectMove: widget.onProjectMove,
-          onProjectTap: widget.onProjectTap,
-          onDragStarted: _onDragStarted,
-          onDragEnded: _onDragEnded,
+        final layout = KanbanConstants.desktopLayout;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < layout.length; i++) ...[
+              Expanded(
+                flex: layout[i].flex,
+                child: _buildStackedGroup(layout[i]),
+              ),
+              if (i < layout.length - 1)
+                SizedBox(
+                  width: layout[i].gapAfter > 0
+                      ? layout[i].gapAfter
+                      : KanbanConstants.columnSpacing,
+                ),
+            ],
+          ],
         );
       },
-    );
-  }
-}
-
-class _DesktopBoard extends StatelessWidget {
-  const _DesktopBoard({
-    required this.itemsByStage,
-    required this.draggingProjectId,
-    this.onProjectMove,
-    this.onProjectTap,
-    this.onDragStarted,
-    this.onDragEnded,
-  });
-
-  final Map<String, List<ProjectBoardItem>> itemsByStage;
-  final ValueNotifier<String?> draggingProjectId;
-  final ProjectMoveCallback? onProjectMove;
-  final ProjectTapCallback? onProjectTap;
-  final ProjectDragStartedCallback? onDragStarted;
-  final ProjectDragEndedCallback? onDragEnded;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final stage in DashboardStage.workflow)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: stage.id == DashboardStageId.concluido ? 0 : 10,
-              ),
-              child: WorkflowColumn(
-                stage: stage,
-                items: itemsByStage[stage.storageKey] ?? const [],
-                draggingProjectId: draggingProjectId,
-                onProjectMove: onProjectMove,
-                onProjectTap: onProjectTap,
-                onDragStarted: onDragStarted,
-                onDragEnded: onDragEnded,
-              ),
-            ),
-          ),
-      ],
     );
   }
 }
@@ -157,61 +229,24 @@ class _MobileCarousel extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.isDragging,
-    required this.draggingProjectId,
     required this.onPageChanged,
     required this.onGoToPage,
-    required this.onPreviousPage,
-    required this.onNextPage,
-    required this.itemsByStage,
-    this.onProjectMove,
-    this.onProjectTap,
-    this.onDragStarted,
-    this.onDragEnded,
+    required this.buildZone,
   });
 
   final PageController pageController;
   final int currentPage;
   final ValueNotifier<bool> isDragging;
-  final ValueNotifier<String?> draggingProjectId;
   final ValueChanged<int> onPageChanged;
   final ValueChanged<int> onGoToPage;
-  final VoidCallback onPreviousPage;
-  final VoidCallback onNextPage;
-  final Map<String, List<ProjectBoardItem>> itemsByStage;
-  final ProjectMoveCallback? onProjectMove;
-  final ProjectTapCallback? onProjectTap;
-  final ProjectDragStartedCallback? onDragStarted;
-  final ProjectDragEndedCallback? onDragEnded;
-
-  static const _chipLabels = [
-    'Incêndios',
-    'Planejamento',
-    'Produção',
-    'Aprovação',
-    'Concluído',
-  ];
+  final Widget Function(KanbanColumnConfig column) buildZone;
 
   @override
   Widget build(BuildContext context) {
-    final pages = DashboardStage.workflow
-        .map(
-          (stage) => WorkflowColumn(
-            stage: stage,
-            items: itemsByStage[stage.storageKey] ?? const [],
-            draggingProjectId: draggingProjectId,
-            onProjectMove: onProjectMove,
-            onProjectTap: onProjectTap,
-            onDragStarted: onDragStarted,
-            onDragEnded: onDragEnded,
-            isMobileCarousel: true,
-          ),
-        )
-        .toList();
-
+    final zones = KanbanConstants.mobileZones;
     final theme = Theme.of(context);
     final canGoBack = currentPage > 0;
-    final canGoForward = currentPage < pages.length - 1;
-    final currentTitle = DashboardStage.workflow[currentPage].title;
+    final canGoForward = currentPage < zones.length - 1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -219,65 +254,23 @@ class _MobileCarousel extends StatelessWidget {
         Row(
           children: [
             IconButton(
-              onPressed: canGoBack ? onPreviousPage : null,
+              onPressed: canGoBack ? () => onGoToPage(currentPage - 1) : null,
               icon: const Icon(Icons.chevron_left_rounded),
-              tooltip: 'Coluna anterior',
+              tooltip: 'Área anterior',
             ),
             Expanded(
               child: Text(
-                currentTitle,
+                zones[currentPage].title,
                 textAlign: TextAlign.center,
-                style: ThemeUtils.sectionTitle(context),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(
-              onPressed: canGoForward ? onNextPage : null,
+              onPressed: canGoForward ? () => onGoToPage(currentPage + 1) : null,
               icon: const Icon(Icons.chevron_right_rounded),
-              tooltip: 'Próxima coluna',
+              tooltip: 'Próxima área',
             ),
           ],
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _chipLabels.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final selected = index == currentPage;
-              return ChoiceChip(
-                label: Text(_chipLabels[index]),
-                selected: selected,
-                onSelected: (_) => onGoToPage(index),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(pages.length, (index) {
-            final active = index == currentPage;
-            return GestureDetector(
-              onTap: () => onGoToPage(index),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: active ? 18 : 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: active
-                        ? AgencyThemeColors.of(context).contentAccent
-                        : theme.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-            );
-          }),
         ),
         const SizedBox(height: 8),
         Expanded(
@@ -291,14 +284,14 @@ class _MobileCarousel extends StatelessWidget {
                     ? const NeverScrollableScrollPhysics()
                     : const BouncingScrollPhysics(),
                 onPageChanged: onPageChanged,
-                itemCount: pages.length,
+                itemCount: zones.length,
                 itemBuilder: (context, index) {
                   return Padding(
                     padding: EdgeInsets.only(
                       left: index == 0 ? 0 : DashboardLayoutBreakpoints.mobileColumnSpacing / 2,
                       right: DashboardLayoutBreakpoints.mobileColumnSpacing,
                     ),
-                    child: pages[index],
+                    child: buildZone(zones[index]),
                   );
                 },
               );

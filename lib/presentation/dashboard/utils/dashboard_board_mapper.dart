@@ -1,17 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../../core/utils/date_format_utils.dart';
 import '../../projects/models/planning_status.dart';
 import '../../projects/models/project_category.dart';
 import '../config/dashboard_stages.dart';
+import '../config/dashboard_zones.dart';
 import '../models/project_board_item.dart';
 import 'board_order_utils.dart';
 
-/// Mapeia documentos Firestore para colunas do dashboard Kanban unificado.
+/// Mapeia documentos Firestore para as zonas do dashboard reorganizado.
 class DashboardBoardMapper {
   DashboardBoardMapper._();
 
   static Map<String, List<ProjectBoardItem>> emptyBoard() {
     return {
-      for (final stage in DashboardStage.workflow) stage.storageKey: <ProjectBoardItem>[],
+      for (final zone in DashboardZoneId.values) zone.storageKey: <ProjectBoardItem>[],
     };
   }
 
@@ -23,6 +26,7 @@ class DashboardBoardMapper {
     final board = emptyBoard();
     final docs = snapshot.docs.toList()
       ..sort((a, b) => _compareCreatedAtDesc(a.data(), b.data()));
+    final today = DateFormatUtils.dateOnly(DateTime.now());
 
     for (final doc in docs) {
       final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -34,11 +38,15 @@ class DashboardBoardMapper {
       final item = ProjectBoardItem.fromFirestore(doc.id, data);
       if (item.title.isEmpty) continue;
 
-      final stageKey = stageIdForStatus(
-        data['status'] as String?,
-        data: data,
-      ).name;
-      board[stageKey]!.add(item);
+      final workflowZone = workflowZoneForItem(data, item);
+      board[workflowZone.storageKey]!.add(item);
+
+      if (shouldMirrorInPostagensDoDia(data, item, today)) {
+        board[DashboardZoneId.postagensDoDia.storageKey]!.add(item);
+      }
+      if (shouldMirrorInIncendio(data, item, today)) {
+        board[DashboardZoneId.incendio.storageKey]!.add(item);
+      }
     }
 
     for (final items in board.values) {
@@ -46,6 +54,97 @@ class DashboardBoardMapper {
     }
 
     return board;
+  }
+
+  /// Zona de workflow onde o card “mora” (arrastável). Data não move o card.
+  static DashboardZoneId workflowZoneForItem(
+    Map<String, dynamic> data,
+    ProjectBoardItem item,
+  ) {
+    final isPlanning = isPlanejamentoProject(data);
+    final stage = stageIdForStatus(data['status'] as String?, data: data);
+
+    if (isProjectConcluded(data, item)) return DashboardZoneId.concluidos;
+
+    return _workflowZoneForStage(stage, isPlanning: isPlanning);
+  }
+
+  static bool shouldMirrorInPostagensDoDia(
+    Map<String, dynamic> data,
+    ProjectBoardItem item,
+    DateTime today,
+  ) {
+    if (isProjectConcluded(data, item)) return false;
+    final scheduledDay = DateFormatUtils.projectDeliveryDate(data);
+    return scheduledDay != null && DateFormatUtils.isSameDay(scheduledDay, today);
+  }
+
+  static bool shouldMirrorInIncendio(
+    Map<String, dynamic> data,
+    ProjectBoardItem item,
+    DateTime today,
+  ) {
+    if (isProjectConcluded(data, item)) return false;
+    final scheduledDay = DateFormatUtils.projectDeliveryDate(data);
+    return scheduledDay != null && scheduledDay.isBefore(today);
+  }
+
+  /// Card finalizado — nunca entra em Postagens do dia / Incêndio por data.
+  static bool isProjectConcluded(Map<String, dynamic> data, ProjectBoardItem item) {
+    if (item.isCompleted) return true;
+    return isProjectConcludedFromData(data);
+  }
+
+  static bool isProjectConcludedFromData(Map<String, dynamic> data) {
+    if (data['isCompleted'] == true) return true;
+
+    final status = data['status'] as String?;
+    if (isCompletedStatus(status)) return true;
+    if (stageIdForStatus(status, data: data) == DashboardStageId.concluido) return true;
+
+    if (isPlanejamentoProject(data)) {
+      final planning = PlanningStatus.fromFirestore(data['planningStatus'] as String?);
+      if (planning.id == PlanningStatusId.publicado) return true;
+    }
+
+    return false;
+  }
+
+  static DashboardZoneId _workflowZoneForStage(
+    DashboardStageId stage, {
+    required bool isPlanning,
+  }) {
+    return switch (stage) {
+      DashboardStageId.producao => DashboardZoneId.producao,
+      DashboardStageId.aprovacao => DashboardZoneId.aprovacao,
+      DashboardStageId.concluido => DashboardZoneId.concluidos,
+      _ when !isPlanning => DashboardZoneId.jobs,
+      _ => DashboardZoneId.statusPlanejamento,
+    };
+  }
+
+  static String firestoreStatusForZone(DashboardZoneId zone) {
+    return switch (zone) {
+      DashboardZoneId.postagensDoDia => 'Postagens',
+      DashboardZoneId.jobs => 'Planejamento',
+      DashboardZoneId.incendio => 'Incêndios',
+      DashboardZoneId.producao => 'Produção',
+      DashboardZoneId.aprovacao => 'Aprovação',
+      DashboardZoneId.concluidos => 'Concluído',
+      DashboardZoneId.statusPlanejamento => 'Planejamento',
+    };
+  }
+
+  static DashboardStageId stageIdForZone(DashboardZoneId zone) {
+    return switch (zone) {
+      DashboardZoneId.postagensDoDia => DashboardStageId.planejamento,
+      DashboardZoneId.jobs => DashboardStageId.planejamento,
+      DashboardZoneId.incendio => DashboardStageId.incendios,
+      DashboardZoneId.producao => DashboardStageId.producao,
+      DashboardZoneId.aprovacao => DashboardStageId.aprovacao,
+      DashboardZoneId.concluidos => DashboardStageId.concluido,
+      DashboardZoneId.statusPlanejamento => DashboardStageId.planejamento,
+    };
   }
 
   static String stageKeyForStatus(String? status, {Map<String, dynamic>? data}) =>
@@ -116,6 +215,10 @@ class DashboardBoardMapper {
       PlanningStatusId.agendado => DashboardStageId.aprovacao,
       PlanningStatusId.publicado => DashboardStageId.concluido,
     };
+  }
+
+  static String? planningStatusForZone(DashboardZoneId zone) {
+    return planningStatusForStage(stageIdForZone(zone));
   }
 
   /// Sincroniza planningStatus ao mover card de planejamento no Kanban.

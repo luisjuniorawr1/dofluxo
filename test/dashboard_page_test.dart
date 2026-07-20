@@ -6,7 +6,7 @@ import 'package:dofluxo/presentation/dashboard/pages/dashboard_page.dart';
 import 'package:dofluxo/presentation/projects/manager/project_service.dart';
 
 void main() {
-  testWidgets('Dashboard renders unified Kanban columns', (WidgetTester tester) async {
+  testWidgets('Dashboard renders reorganized wireframe zones', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -26,12 +26,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Incêndios'), findsOneWidget);
-    expect(find.textContaining('Planejamento'), findsWidgets);
+    expect(find.textContaining('Postagens do dia'), findsOneWidget);
+    expect(find.text('Jobs'), findsOneWidget);
+    expect(find.text('Incêndio'), findsOneWidget);
     expect(find.textContaining('Produção'), findsOneWidget);
     expect(find.textContaining('Aprovação'), findsOneWidget);
-    expect(find.textContaining('Concluído'), findsOneWidget);
-    expect(find.text('Prioridade máxima'), findsOneWidget);
+    expect(find.textContaining('Concluídos'), findsOneWidget);
+    expect(find.textContaining('Status do Planejamento'), findsOneWidget);
+    expect(find.textContaining('Espelho · atrasados'), findsNothing);
+    expect(find.text('Em breve'), findsNothing);
     expect(find.text('Novo Projeto'), findsOneWidget);
     expect(find.text('Configurações'), findsNothing);
     expect(find.textContaining('Seja bem vindo'), findsOneWidget);

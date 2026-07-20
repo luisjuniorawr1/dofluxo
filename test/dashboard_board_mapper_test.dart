@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dofluxo/presentation/dashboard/config/dashboard_stages.dart';
+import 'package:dofluxo/presentation/dashboard/config/dashboard_zones.dart';
 import 'package:dofluxo/presentation/dashboard/models/project_board_item.dart';
 import 'package:dofluxo/presentation/dashboard/utils/dashboard_board_mapper.dart';
 import 'package:dofluxo/presentation/projects/models/project_category.dart';
@@ -50,7 +51,7 @@ void main() {
       expect(DashboardBoardMapper.stageIdForStatus('Concluído'), DashboardStageId.concluido);
     });
 
-    test('groups snapshot docs into board columns', () {
+    test('groups snapshot docs into dashboard zones', () {
       final snapshot = _FakeSnapshot([
         _FakeDoc('1', {
           'title': 'Campanha verão',
@@ -78,11 +79,112 @@ void main() {
 
       final board = DashboardBoardMapper.groupSnapshot(snapshot);
 
-      expect(board[DashboardStageId.planejamento.name], hasLength(2));
-      expect(board[DashboardStageId.producao.name], hasLength(1));
-      expect(board[DashboardStageId.incendios.name], hasLength(1));
-      expect(board[DashboardStageId.producao.name]!.first.clientName, 'Cliente X');
-      expect(board[DashboardStageId.producao.name]!.first.progress, 0.75);
+      expect(board[DashboardZoneId.jobs.name], hasLength(2));
+      expect(board[DashboardZoneId.producao.name], hasLength(1));
+      expect(board[DashboardZoneId.statusPlanejamento.name], hasLength(1));
+      expect(board[DashboardZoneId.producao.name]!.first.clientName, 'Cliente X');
+      expect(board[DashboardZoneId.producao.name]!.first.progress, 0.75);
+    });
+
+    test('workflowZoneForItem keeps cards in workflow; mirrors by date', () {
+      final today = DateTime(2026, 6, 23);
+      final yesterday = Timestamp.fromDate(DateTime(2026, 6, 22));
+      final tomorrow = Timestamp.fromDate(DateTime(2026, 6, 24));
+      final todayTs = Timestamp.fromDate(DateTime(2026, 6, 23));
+
+      final overdueData = {'title': 'Atrasado', 'status': 'Produção', 'scheduledDate': yesterday};
+      final overdueItem = ProjectBoardItem.fromFirestore('1', overdueData);
+      expect(DashboardBoardMapper.workflowZoneForItem(overdueData, overdueItem),
+          DashboardZoneId.producao);
+      expect(DashboardBoardMapper.shouldMirrorInIncendio(overdueData, overdueItem, today),
+          isTrue);
+      expect(DashboardBoardMapper.shouldMirrorInPostagensDoDia(overdueData, overdueItem, today),
+          isFalse);
+
+      final todayData = {'title': 'Hoje', 'status': 'Produção', 'scheduledDate': todayTs};
+      final todayItem = ProjectBoardItem.fromFirestore('2', todayData);
+      expect(DashboardBoardMapper.workflowZoneForItem(todayData, todayItem),
+          DashboardZoneId.producao);
+      expect(DashboardBoardMapper.shouldMirrorInPostagensDoDia(todayData, todayItem, today),
+          isTrue);
+
+      final futureData = {'title': 'Futuro', 'status': 'Produção', 'scheduledDate': tomorrow};
+      final futureItem = ProjectBoardItem.fromFirestore('3', futureData);
+      expect(DashboardBoardMapper.workflowZoneForItem(futureData, futureItem),
+          DashboardZoneId.producao);
+      expect(DashboardBoardMapper.shouldMirrorInPostagensDoDia(futureData, futureItem, today),
+          isFalse);
+    });
+
+    test('groupSnapshot mirrors without removing workflow card', () {
+      final today = DateTime.now();
+      final todayTs = Timestamp.fromDate(
+        DateTime(today.year, today.month, today.day),
+      );
+      final snapshot = _FakeSnapshot([
+        _FakeDoc('1', {
+          'title': 'Post hoje em produção',
+          'status': 'Produção',
+          'scheduledDate': todayTs,
+        }),
+      ]);
+
+      final board = DashboardBoardMapper.groupSnapshot(snapshot);
+
+      expect(board[DashboardZoneId.producao.name], hasLength(1));
+      expect(board[DashboardZoneId.postagensDoDia.name], hasLength(1));
+      expect(
+        board[DashboardZoneId.producao.name]!.first.id,
+        board[DashboardZoneId.postagensDoDia.name]!.first.id,
+      );
+    });
+
+    test('concluded card with today date stays in concluidos only', () {
+      final today = DateTime(2026, 6, 24);
+      final todayTs = Timestamp.fromDate(DateTime(2026, 6, 24));
+      final data = {
+        'title': 'Finalizado',
+        'status': 'Concluído',
+        'scheduledDate': todayTs,
+        'expectedDeliveryDate': todayTs,
+      };
+      final item = ProjectBoardItem.fromFirestore('1', data);
+
+      expect(
+        DashboardBoardMapper.workflowZoneForItem(data, item),
+        DashboardZoneId.concluidos,
+      );
+      expect(
+        DashboardBoardMapper.shouldMirrorInPostagensDoDia(data, item, today),
+        isFalse,
+      );
+    });
+
+    test('mirror uses expectedDeliveryDate when scheduledDate diverges', () {
+      final today = DateTime(2026, 6, 24);
+      final overdue = Timestamp.fromDate(DateTime(2026, 6, 22));
+      final todayTs = Timestamp.fromDate(DateTime(2026, 6, 24));
+
+      final item = ProjectBoardItem.fromFirestore('1', {
+        'title': 'Divergente',
+        'status': 'Postagens',
+        'expectedDeliveryDate': overdue,
+        'scheduledDate': todayTs,
+      });
+
+      expect(
+        DashboardBoardMapper.shouldMirrorInIncendio(
+          {
+            'status': 'Postagens',
+            'expectedDeliveryDate': overdue,
+            'scheduledDate': todayTs,
+          },
+          item,
+          today,
+        ),
+        isTrue,
+      );
+      expect(item.expectedDeliveryDate, '22/06/2026');
     });
 
     test('filters jobs and planning by category', () {

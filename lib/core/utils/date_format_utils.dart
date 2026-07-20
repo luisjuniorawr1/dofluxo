@@ -53,6 +53,13 @@ abstract final class DateFormatUtils {
     return null;
   }
 
+  /// Data de entrega/agendamento do projeto (mesma prioridade do card e do Kanban).
+  static DateTime? projectDeliveryDate(Map<String, dynamic> data) {
+    final parsed = fromFirestore(data['expectedDeliveryDate']) ??
+        fromFirestore(data['scheduledDate']);
+    return parsed != null ? dateOnly(parsed) : null;
+  }
+
   static DateTime? tryParseDayMonthYear(String value) {
     final parts = value.split('/');
     if (parts.length != 3) return null;

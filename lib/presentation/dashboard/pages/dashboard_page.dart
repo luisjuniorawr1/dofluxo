@@ -10,7 +10,7 @@ import '../../projects/manager/project_service.dart';
 import '../../projects/pages/project_detail_page.dart';
 import '../../projects/widgets/new_project_dialog.dart';
 import '../config/dashboard_layout_breakpoints.dart';
-import '../config/dashboard_stages.dart';
+import '../config/dashboard_zones.dart';
 import '../utils/dashboard_board_mapper.dart';
 import '../widgets/dashboard_welcome_header.dart';
 import '../widgets/dashboard_board_layout.dart';
@@ -26,22 +26,20 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _uuid = const Uuid();
   bool _isCreatingProject = false;
-  bool _isMovingProject = false;
   bool _showJobs = true;
   bool _showPlanning = true;
 
   Future<void> _moveProject(
     String projectId,
-    DashboardStageId targetStage,
+    DashboardZoneId targetZone,
     int insertIndex,
     double boardOrder,
   ) async {
-    if (_isMovingProject) return;
+    if (!targetZone.acceptsDragDrop) return;
 
-    _isMovingProject = true;
     try {
-      final status = DashboardBoardMapper.firestoreStatusForStage(targetStage);
-      final planningStatus = DashboardBoardMapper.planningStatusForStage(targetStage);
+      final status = DashboardBoardMapper.firestoreStatusForZone(targetZone);
+      final planningStatus = DashboardBoardMapper.planningStatusForZone(targetZone);
 
       await context.read<ProjectService>().updateProject(projectId, {
         'status': status,
@@ -57,8 +55,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         );
       }
-    } finally {
-      _isMovingProject = false;
     }
   }
 
@@ -185,7 +181,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     : DashboardBoardMapper.emptyBoard();
 
                 return DashboardBoardLayout(
-                  itemsByStage: board,
+                  itemsByZone: board,
                   onProjectMove: _moveProject,
                   onProjectTap: _openProject,
                 );
