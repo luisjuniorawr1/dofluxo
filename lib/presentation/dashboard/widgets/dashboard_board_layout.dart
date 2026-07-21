@@ -244,7 +244,6 @@ class _MobileCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final zones = KanbanConstants.mobileZones;
-    final theme = Theme.of(context);
     final canGoBack = currentPage > 0;
     final canGoForward = currentPage < zones.length - 1;
 
@@ -258,13 +257,7 @@ class _MobileCarousel extends StatelessWidget {
               icon: const Icon(Icons.chevron_left_rounded),
               tooltip: 'Área anterior',
             ),
-            Expanded(
-              child: Text(
-                zones[currentPage].title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
+            const Spacer(),
             IconButton(
               onPressed: canGoForward ? () => onGoToPage(currentPage + 1) : null,
               icon: const Icon(Icons.chevron_right_rounded),

@@ -58,19 +58,22 @@ class KanbanColumn<T> extends StatelessWidget {
     final bodyColor = KanbanConstants.columnBodyBackground(column);
     final effectiveMove = column.acceptsDragDrop ? onMove : null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ColumnHeader(column: column, itemCount: items.length),
-        const SizedBox(height: KanbanConstants.headerListGap),
-        Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: bodyColor,
-              borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: bodyColor,
+        borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: _ColumnHeader(column: column, itemCount: items.length),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+            const SizedBox(height: KanbanConstants.headerListGap),
+            Expanded(
               child: ValueListenableBuilder<String?>(
                 valueListenable: draggingItemId,
                 builder: (context, draggingId, _) {
@@ -83,9 +86,9 @@ class KanbanColumn<T> extends StatelessWidget {
                 },
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
