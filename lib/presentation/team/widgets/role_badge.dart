@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
-import '../../../core/utils/theme_utils.dart';
+import '../../shared/widgets/app_tag_badge.dart';
 
 class RoleBadge extends StatelessWidget {
   const RoleBadge({super.key, required this.role});
@@ -10,44 +10,23 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
 
-    // Dono: primary sólido (helper global). Demais: containers do ColorScheme.
-    final (background, foreground) = switch (role) {
-      AgencyRole.owner => () {
-          final filled = ThemeUtils.filledBadgeColors(scheme.primary);
-          return (filled.background, filled.foreground);
-        }(),
-      AgencyRole.admin => (
-          scheme.secondaryContainer,
-          scheme.onSecondaryContainer,
+    return switch (role) {
+      AgencyRole.owner => AppTagBadge.filled(
+          label: role.label,
+          accent: scheme.primary,
         ),
-      AgencyRole.member => (
-          scheme.surfaceContainerHighest,
-          scheme.onSurface,
+      AgencyRole.admin => AppTagBadge(
+          label: role.label,
+          background: scheme.secondaryContainer,
+          foreground: scheme.onSecondaryContainer,
+        ),
+      AgencyRole.member => AppTagBadge(
+          label: role.label,
+          background: scheme.surfaceContainerHighest,
+          foreground: scheme.onSurface,
         ),
     };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Color.alphaBlend(
-            foreground.withValues(alpha: 0.28),
-            background,
-          ),
-        ),
-      ),
-      child: Text(
-        role.label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
   }
 }

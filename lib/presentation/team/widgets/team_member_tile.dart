@@ -4,6 +4,7 @@ import '../../../core/agency/models/agency_role.dart';
 import '../../../core/agency/models/membership.dart';
 import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/theme_utils.dart';
+import '../../shared/widgets/app_tag_badge.dart';
 import 'role_badge.dart';
 
 class TeamMemberTile extends StatelessWidget {
@@ -49,8 +50,6 @@ class TeamMemberTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final joinedLabel = _joinedLabel;
-    final youBadge = ThemeUtils.filledBadgeColors(scheme.primary);
-
     return Material(
       color: isCurrentUser
           ? scheme.surfaceContainerLow
@@ -88,25 +87,9 @@ class TeamMemberTile extends StatelessWidget {
                         ),
                       ),
                       if (isCurrentUser)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: youBadge.background,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Color.alphaBlend(
-                                youBadge.foreground.withValues(alpha: 0.28),
-                                youBadge.background,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'Você',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: youBadge.foreground,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        AppTagBadge.filled(
+                          label: 'Você',
+                          accent: scheme.primary,
                         ),
                       RoleBadge(role: membership.role),
                     ],

@@ -199,6 +199,8 @@ class AppTheme {
         // Fundo opaco + borda: chips Material legíveis em qualquer página.
         backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: primaryColor,
+        // ChoiceChip usa secondary* no estado selecionado.
+        secondarySelectedColor: primaryColor,
         disabledColor: colorScheme.surfaceContainer,
         labelStyle: TextStyle(
           color: colorScheme.onSurface,
