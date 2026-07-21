@@ -334,7 +334,7 @@ Campos extras de planejamento **não** têm tela separada — só em `NewProject
 - Índices compostos versionados: `projects`, `clients`, `memberships` (×3), `agency_invite_codes` — ver `TECHNICAL_DOC.md` § Índices compostos
 - `users.email`: índice automático de campo único (não entra em `firestore.indexes.json`)
 - Deploy via `firebase deploy --only firestore` ou `--only firestore:indexes`
-- **Hosting Web:** `.\deploy.ps1` (build + bump de versão + `firebase deploy --only hosting`) — URL: `https://dofluxo-organizer.web.app`
+- **Hosting Web:** `.\deploy-web.ps1` (git pull + build + bump de versão + `firebase deploy`) — URL: `https://dofluxo-organizer.web.app`
 - Build web: `--pwa-strategy=none --no-web-resources-cdn --dart-define=APP_VERSION=x.y.z+N` (sem service worker; CanvasKit no próprio domínio — compatível com bloqueadores/extensões)
 - **Atualização obrigatória (web):** `AppUpdateGate` compara `APP_VERSION` compilada vs `/version.json` (a cada ~2,5 min, ao focar/voltar à aba). Versão nova → overlay bloqueante "Atualizar agora". Ver `TECHNICAL_DOC.md` § Atualização obrigatória.
 
