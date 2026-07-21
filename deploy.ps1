@@ -92,6 +92,15 @@ function Ensure-GitIdentity {
     Write-Host "   user.name  = $(git config user.name)" -ForegroundColor DarkGray
 }
 
+function Ensure-GitEditor {
+    $editor = git config core.editor
+    if (-not $editor) {
+        Write-Host ">> Configurando editor Git como Notepad (evita Vim travado)" -ForegroundColor Yellow
+        git config core.editor "notepad"
+        Assert-LastExit "git config core.editor"
+    }
+}
+
 Write-Host ""
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host " DOFLUXO - publicar (tudo em um comando)" -ForegroundColor Cyan
@@ -99,6 +108,7 @@ Write-Host "=============================================================" -Fore
 Write-Host ""
 
 Ensure-GitIdentity
+Ensure-GitEditor
 
 # Merge incompleto bloqueia pull/deploy.
 $gitDir = Join-Path $PSScriptRoot ".git"
@@ -126,16 +136,16 @@ if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
 }
 
 # --- 1) Atualizar do GitHub --------------------------------------------------
-Write-Host ">> git pull" -ForegroundColor Cyan
-git pull --ff-only
+Write-Host ">> git pull origin main" -ForegroundColor Cyan
+git pull --ff-only origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "   ff-only falhou; tentando git pull normal..." -ForegroundColor DarkGray
-    git pull
+    Write-Host "   ff-only falhou; tentando git pull --rebase..." -ForegroundColor DarkGray
+    git pull --rebase origin main
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
-        Write-Host "ERRO no git pull. Se houver arquivos locais bloqueando:" -ForegroundColor Red
-        Write-Host "  git stash push -m pre-deploy" -ForegroundColor Yellow
-        Write-Host "  git pull origin main" -ForegroundColor Yellow
+        Write-Host "ERRO no git pull. Resolva o estado do Git e tente de novo:" -ForegroundColor Red
+        Write-Host "  git merge --abort" -ForegroundColor Yellow
+        Write-Host "  git pull --rebase origin main" -ForegroundColor Yellow
         Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
         exit $LASTEXITCODE
     }
