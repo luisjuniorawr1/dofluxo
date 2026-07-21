@@ -20,11 +20,23 @@ Set-Location $PSScriptRoot
 function Invoke-Firebase {
     param([string[]]$Arguments)
 
-    if (Get-Command firebase -ErrorAction SilentlyContinue) {
-        & firebase @Arguments
-    } else {
-        Write-Host "   (firebase nao encontrado no PATH; usando npx firebase-tools)" -ForegroundColor DarkGray
-        & npx firebase-tools @Arguments
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
+    try {
+        if (Get-Command firebase -ErrorAction SilentlyContinue) {
+            $output = & firebase @Arguments 2>&1
+        } else {
+            Write-Host "   (firebase nao encontrado no PATH; usando npx firebase-tools)" -ForegroundColor DarkGray
+            $output = & npx firebase-tools @Arguments 2>&1
+        }
+
+        return [PSCustomObject]@{
+            Output   = ($output | ForEach-Object { "$_" }) -join [Environment]::NewLine
+            ExitCode = $LASTEXITCODE
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
     }
 }
 
@@ -32,32 +44,23 @@ function Assert-FirebaseLogin {
     Write-Host ""
     Write-Host ">> Verificando login Firebase..." -ForegroundColor Cyan
 
-    $loginList = Invoke-Firebase @("login:list") 2>&1 | Out-String
-    Write-Host $loginList
+    $loginResult = Invoke-Firebase @("login:list")
+    if ($loginResult.Output) {
+        Write-Host $loginResult.Output
+    }
 
-    if ($loginList -notmatch '@') {
+    if ($loginResult.ExitCode -ne 0 -or $loginResult.Output -notmatch '@') {
         Write-Host ""
         Write-Host "Voce nao esta autenticado no Firebase CLI." -ForegroundColor Red
         Write-Host "Rode no PowerShell:" -ForegroundColor Yellow
-        Write-Host "  firebase login --reauth" -ForegroundColor Yellow
+        Write-Host "  firebase logout" -ForegroundColor Yellow
+        Write-Host "  firebase login" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "Use a conta dofluxodigital@gmail.com (projeto dofluxo-organizer)." -ForegroundColor Yellow
         exit 1
     }
 
-    Write-Host ">> Confirmando acesso ao projeto dofluxo-organizer..." -ForegroundColor Cyan
-    $projects = Invoke-Firebase @("projects:list") 2>&1 | Out-String
-    if ($projects -notmatch 'dofluxo-organizer') {
-        Write-Host ""
-        Write-Host "A conta logada nao tem acesso ao projeto dofluxo-organizer." -ForegroundColor Red
-        Write-Host "Rode:" -ForegroundColor Yellow
-        Write-Host "  firebase logout" -ForegroundColor Yellow
-        Write-Host "  firebase login" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Projetos visiveis para esta conta:" -ForegroundColor DarkGray
-        Write-Host $projects
-        exit 1
-    }
+    Write-Host ">> Login Firebase OK" -ForegroundColor Green
 }
 
 function Assert-LastExit([string]$step) {
@@ -181,8 +184,18 @@ Assert-FirebaseLogin
 
 Write-Host ""
 Write-Host ">> firebase deploy --only firestore:rules,hosting" -ForegroundColor Cyan
-Invoke-Firebase @("deploy", "--only", "firestore:rules,hosting")
-Assert-LastExit "firebase deploy"
+$deployResult = Invoke-Firebase @("deploy", "--only", "firestore:rules,hosting")
+if ($deployResult.Output) {
+    Write-Host $deployResult.Output
+}
+if ($deployResult.ExitCode -ne 0) {
+    Write-Host ""
+    Write-Host "ERRO no firebase deploy." -ForegroundColor Red
+    Write-Host "Confirme login com dofluxodigital@gmail.com:" -ForegroundColor Yellow
+    Write-Host "  firebase logout" -ForegroundColor Yellow
+    Write-Host "  firebase login" -ForegroundColor Yellow
+    exit $deployResult.ExitCode
+}
 
 # --- 7) commit + push da versao ----------------------------------------------
 Write-Host ""
