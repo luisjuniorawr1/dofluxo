@@ -37,6 +37,9 @@ typedef KanbanCardBuilder<T> = Widget Function(
 });
 
 /// Coluna Kanban com corpo scrollável e drop targets por card / fim / vazio.
+///
+/// Decisão travada (AGENTS.md D7): o título (`_ColumnHeader`) fica **dentro**
+/// do `DecoratedBox` colorido, junto com os cards. Não colocar o header fora.
 class KanbanColumn<T> extends StatelessWidget {
   const KanbanColumn({
     super.key,
