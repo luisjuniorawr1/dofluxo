@@ -1,10 +1,14 @@
-# DOFLUXO — dev Web com login Google persistente entre runs.
-# Usa porta fixa (8080) + perfil Chrome dedicado (cookies/Firebase Auth).
+# DOFLUXO — dev Web local (sem abrir o Chrome automaticamente).
+# Usa web-server na porta fixa 8080.
+
+param(
+    [switch]$OpenBrowser
+)
 
 $ErrorActionPreference = "Stop"
 $projectRoot = $PSScriptRoot
-$chromeProfile = Join-Path $projectRoot ".dart_tool\chrome-dev-profile"
 $webPort = 8080
+$localUrl = "http://localhost:$webPort"
 
 function Stop-ProcessOnPort {
     param([int]$Port)
@@ -36,9 +40,16 @@ function Stop-ProcessOnPort {
 
 Stop-ProcessOnPort -Port $webPort
 
-Write-Host "Perfil Chrome: $chromeProfile" -ForegroundColor DarkGray
-Write-Host "URL: http://localhost:$webPort" -ForegroundColor DarkGray
+Write-Host "URL: $localUrl" -ForegroundColor Cyan
+Write-Host "Servidor local sem abrir navegador. Use -OpenBrowser se quiser abrir o Chrome." -ForegroundColor DarkGray
 
-flutter run -d chrome `
-  --web-port=$webPort `
-  "--web-browser-flag=--user-data-dir=$chromeProfile"
+if ($OpenBrowser) {
+    $chromeProfile = Join-Path $projectRoot ".dart_tool\chrome-dev-profile"
+    Write-Host "Perfil Chrome: $chromeProfile" -ForegroundColor DarkGray
+
+    flutter run -d chrome `
+        --web-port=$webPort `
+        "--web-browser-flag=--user-data-dir=$chromeProfile"
+} else {
+    flutter run -d web-server --web-port=$webPort
+}

@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "deploy": "powershell -ExecutionPolicy Bypass -File .\\deploy-web.ps1",
     "deploy:hosting": "flutter build web && firebase deploy --only hosting"
   },
   "devDependencies": {

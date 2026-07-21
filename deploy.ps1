@@ -1,7 +1,8 @@
 # =============================================================================
 # DOFLUXO - Deploy Web com atualizacao obrigatoria
 # =============================================================================
-# Uso:  .\deploy.ps1
+# Uso recomendado:  .\deploy-web.ps1   (git pull + deploy)
+# Deploy apenas:    .\deploy.ps1
 #
 # O que faz:
 #   1. Le a versao atual em pubspec.yaml (x.y.z+N)
@@ -11,9 +12,8 @@
 #   5. firebase deploy --only firestore:rules,hosting
 #   6. Imprime a versao publicada
 #
-# Por que incrementar: o aviso de atualizacao no app SO dispara quando a
-# versao publicada (version.json) difere da versao em execucao. Sem bump,
-# nenhum cliente sera forcado a atualizar.
+# Nao abre o Chrome. Abas abertas recebem aviso de atualizacao; novas visitas
+# carregam a versao publicada. O bump de versao e obrigatorio para o aviso.
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -93,10 +93,7 @@ Write-Host " Rules Firestore + Hosting publicados" -ForegroundColor Green
 Write-Host " https://dofluxo-organizer.web.app" -ForegroundColor Green
 Write-Host "=============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Clientes com o app aberto serao avisados para atualizar em ate ~5 s" -ForegroundColor DarkGray
-Write-Host "(ou imediatamente ao focar / voltar para a aba)." -ForegroundColor DarkGray
+Write-Host "Abas abertas recebem aviso de atualizacao em ate ~5 s" -ForegroundColor DarkGray
+Write-Host "(ou ao focar / voltar para a aba). Novas visitas ja abrem atualizadas." -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "IMPORTANTE: para testar o overlay:" -ForegroundColor Yellow
-Write-Host "  1. Abra o site e DEIXE A ABA ABERTA" -ForegroundColor Yellow
-Write-Host "  2. Rode .\deploy.ps1 de novo (gera a proxima versao)" -ForegroundColor Yellow
-Write-Host "  3. Em ate 5 segundos o overlay 'Atualizar agora' aparece" -ForegroundColor Yellow
+Write-Host "Comando unico (pull + deploy): .\deploy-web.ps1" -ForegroundColor DarkGray

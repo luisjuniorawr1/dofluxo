@@ -319,7 +319,8 @@ Força clientes com o app aberto a recarregar quando uma nova versão é publica
 
 | Componente | Papel |
 |------------|-------|
-| `deploy.ps1` (raiz) | Incrementa build em `pubspec.yaml`, builda com `--dart-define=APP_VERSION=x.y.z+N`, faz `firebase deploy --only hosting` |
+| `deploy-web.ps1` (raiz) | **Comando unico:** `git pull` + deploy (recomendado) |
+| `deploy.ps1` (raiz) | Incrementa build em `pubspec.yaml`, builda com `--dart-define=APP_VERSION=x.y.z+N`, faz `firebase deploy --only firestore:rules,hosting` |
 | `lib/core/update/app_update_logic.dart` | Lógica pura: `normalizeVersionJson`, `isUpdateRequired` (testada) |
 | `lib/core/update/app_version_service.dart` | Export condicional (`dart.library.html`) web vs stub |
 | `app_version_service_web.dart` | Lê `/version.json` sem cache; gatilhos foco/`visibilitychange`; `reloadApp()` |
@@ -328,7 +329,7 @@ Força clientes com o app aberto a recarregar quando uma nova versão é publica
 
 **Fluxo:** baseline da aba = primeira leitura de `/version.json` nesta vida da página. Checagem **imediata** + a cada **5 s** + ao focar/voltar à aba. Se a remota ≠ baseline → overlay + "Atualizar agora". O botão **esconde o overlay na hora**, grava `sessionStorage.dofluxo_skip_update_once` e navega com `location.href` (síncrono — sem aguardar limpeza de cache, que travava o botão). Na próxima carga o overlay é pulado uma vez. Falha de rede é silenciosa. Só web.
 
-**Como testar:** abrir o site e deixar a aba aberta → `.\deploy.ps1` → em ≤5 s o overlay aparece. (Abrir o site *depois* do deploy não mostra overlay — a aba já está na versão nova.)
+**Como testar:** deixe uma aba aberta no site → `.\deploy-web.ps1` → em ≤5 s o aviso aparece. Abrir o site depois do deploy carrega a versao nova sem aviso.
 
 **Hosting:** `index.html`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` com `Cache-Control: no-store` em `firebase.json`; build sem service worker (`--pwa-strategy=none`).
 
