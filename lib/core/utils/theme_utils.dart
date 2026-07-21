@@ -68,22 +68,25 @@ class ThemeUtils {
   }
 
   /// Fundo + texto de badge tingido pela cor de destaque, com contraste ≥ 4.5.
+  ///
+  /// Usa mistura forte com a superfície para o chip não “sumir” no card
+  /// (problema comum com amarelo/ouro em alpha baixo no dark).
   static ({Color background, Color foreground}) tintedBadgeColors({
     required Color accent,
     required Color surface,
     required Brightness brightness,
     double minRatio = 4.5,
   }) {
-    final background = Color.alphaBlend(
-      accent.withValues(alpha: brightness == Brightness.dark ? 0.34 : 0.22),
-      surface,
-    );
-    final foreground = readableAccent(
-      accent: accent,
-      background: background,
-      fallback: getContrastColor(background),
-      minRatio: minRatio,
-    );
+    final mix = brightness == Brightness.dark ? 0.55 : 0.62;
+    final background = Color.lerp(surface, accent, mix)!;
+    final foreground = getContrastColor(background);
+    // Se ainda falhar (cor intermediária), força preto/branco pelo fallback.
+    if (contrastRatio(foreground, background) < minRatio) {
+      return (
+        background: background,
+        foreground: background.computeLuminance() > 0.35 ? Colors.black : Colors.white,
+      );
+    }
     return (background: background, foreground: foreground);
   }
 

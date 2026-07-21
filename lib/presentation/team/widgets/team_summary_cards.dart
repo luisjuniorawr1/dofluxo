@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
 import '../../../core/agency/models/membership.dart';
+import '../../../core/utils/theme_utils.dart';
 
 class TeamSummaryCards extends StatelessWidget {
   const TeamSummaryCards({super.key, required this.members});
@@ -73,13 +74,14 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
           Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: ThemeUtils.bodyMuted(context),
           ),
         ],
       ),

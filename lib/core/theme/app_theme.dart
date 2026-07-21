@@ -18,11 +18,12 @@ class AppTheme {
     );
 
     // Texto principal e secundário com contraste forte nos dois temas.
-    final onSurface = isDark ? const Color(0xFFF2F2F2) : const Color(0xFF141414);
-    final onSurfaceVariant = isDark ? const Color(0xFFCFCFCF) : const Color(0xFF454545);
+    final onSurface = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
+    // Secundário: legível em cards (não “cinza fantasma”).
+    final onSurfaceVariant = isDark ? const Color(0xFFE2E2E2) : const Color(0xFF3A3A3A);
     final surface = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
     final surfaceContainerHighest =
-        isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD6D6D6);
+        isDark ? const Color(0xFF454545) : const Color(0xFFD0D0D0);
 
     final onBrand = ThemeUtils.getContrastColor(primaryColor);
     final contentAccent = ThemeUtils.readableAccent(
@@ -38,21 +39,19 @@ class AppTheme {
       minRatio: 4.5,
     );
 
-    final primaryContainer = Color.alphaBlend(
-      primaryColor.withValues(alpha: isDark ? 0.38 : 0.24),
-      isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFFFFF),
-    );
-    final onPrimaryContainer = ThemeUtils.readableAccent(
-      accent: primaryColor,
-      background: primaryContainer,
-      fallback: ThemeUtils.getContrastColor(primaryContainer),
-      minRatio: 4.5,
-    );
+    // Containers de marca bem visíveis (ex.: chip Você/Dono com amarelo da agência).
+    final primaryContainerBase = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFFFFFF);
+    final primaryContainer = Color.lerp(
+      primaryContainerBase,
+      primaryColor,
+      isDark ? 0.58 : 0.68,
+    )!;
+    final onPrimaryContainer = ThemeUtils.getContrastColor(primaryContainer);
 
     final secondaryContainer =
-        isDark ? const Color(0xFF2F3B48) : const Color(0xFFD8E2EC);
+        isDark ? const Color(0xFF455A6E) : const Color(0xFFC9D7E6);
     final onSecondaryContainer =
-        isDark ? const Color(0xFFE3EDF7) : const Color(0xFF152433);
+        isDark ? const Color(0xFFF0F6FC) : const Color(0xFF102033);
 
     final tertiaryContainer =
         isDark ? const Color(0xFF3A342C) : const Color(0xFFEDE4D6);

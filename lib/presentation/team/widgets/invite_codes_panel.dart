@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/agency/models/agency_invite_code.dart';
 import '../../../core/agency/services/invite_code_service.dart';
 import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/theme_utils.dart';
 import '../../agency/pages/join_agency_page.dart';
 
 class InviteCodesPanel extends StatelessWidget {
@@ -97,10 +98,15 @@ class InviteCodesPanel extends StatelessWidget {
                 child: ListTile(
                   title: Text(
                     invite.code,
-                    style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                   subtitle: Text(
                     '${invite.role.label} · expira ${DateFormatUtils.formatDayMonthYear(invite.expiresAt ?? DateTime.now())}',
+                    style: ThemeUtils.bodyMuted(context),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

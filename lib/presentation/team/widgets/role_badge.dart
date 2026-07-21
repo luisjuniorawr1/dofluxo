@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
+import '../../../core/utils/theme_utils.dart';
 
 class RoleBadge extends StatelessWidget {
   const RoleBadge({super.key, required this.role});
@@ -13,10 +14,14 @@ class RoleBadge extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     final (background, foreground) = switch (role) {
-      AgencyRole.owner => (
-          scheme.primaryContainer,
-          scheme.onPrimaryContainer,
-        ),
+      AgencyRole.owner => () {
+          final tinted = ThemeUtils.tintedBadgeColors(
+            accent: scheme.primary,
+            surface: scheme.surfaceContainerLow,
+            brightness: theme.brightness,
+          );
+          return (tinted.background, tinted.foreground);
+        }(),
       AgencyRole.admin => (
           scheme.secondaryContainer,
           scheme.onSecondaryContainer,
@@ -32,12 +37,18 @@ class RoleBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Color.alphaBlend(
+            foreground.withValues(alpha: 0.22),
+            background,
+          ),
+        ),
       ),
       child: Text(
         role.label,
         style: theme.textTheme.labelSmall?.copyWith(
           color: foreground,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

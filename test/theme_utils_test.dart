@@ -44,5 +44,42 @@ void main() {
 
       expect(result, blue);
     });
+
+    test('tintedBadgeColors keeps readable contrast on dark surface', () {
+      const gold = Color(0xFFC9A227);
+      const darkSurface = Color(0xFF1C1C1C);
+
+      final badge = ThemeUtils.tintedBadgeColors(
+        accent: gold,
+        surface: darkSurface,
+        brightness: Brightness.dark,
+      );
+
+      expect(
+        ThemeUtils.contrastRatio(badge.foreground, badge.background),
+        greaterThanOrEqualTo(4.5),
+      );
+      // Fundo do chip deve se afastar da superfície do card.
+      expect(
+        ThemeUtils.contrastRatio(badge.background, darkSurface),
+        greaterThan(1.2),
+      );
+    });
+
+    test('tintedBadgeColors keeps readable contrast on light surface', () {
+      const gold = Color(0xFFC9A227);
+      const lightSurface = Color(0xFFF3F3F3);
+
+      final badge = ThemeUtils.tintedBadgeColors(
+        accent: gold,
+        surface: lightSurface,
+        brightness: Brightness.light,
+      );
+
+      expect(
+        ThemeUtils.contrastRatio(badge.foreground, badge.background),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
   });
 }
