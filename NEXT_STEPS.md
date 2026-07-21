@@ -65,7 +65,9 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 
 ## Decisões tomadas (para não reverter sem motivo)
 
-> **Regra:** decisões desta lista são **travadas**. Outro agente **não** desfaz ao mexer no mesmo arquivo. Detalhes e política: [`AGENTS.md`](AGENTS.md).
+> **Regra:** decisões desta lista são **travadas**. Outro agente **não** desfaz ao mexer no mesmo arquivo.  
+> **Escopo:** altere **só** o que o usuário pediu nesta tarefa — sem polish, limpeza ou refactor colateral.  
+> Detalhes: [`AGENTS.md`](AGENTS.md).
 
 1. **Kanban custom** em vez de `appflowy_board` — drag via `Draggable`/`LongPressDraggable` + `DragTarget`.
 2. **Uma única Dashboard** — **não** criar abas ou telas separadas Job vs Planejamento digital.
