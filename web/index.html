@@ -118,6 +118,25 @@
 
   <script>
     (function () {
+      try {
+        var mode = localStorage.getItem('dofluxo_theme_mode');
+        if (mode === 'light') {
+          document.documentElement.style.background = '#F5F5F5';
+          document.documentElement.style.colorScheme = 'light';
+          document.body.style.background = '#F5F5F5';
+          document.body.style.colorScheme = 'light';
+          var splash = document.getElementById('dofluxo-splash');
+          if (splash) {
+            splash.style.background = '#F5F5F5';
+            splash.style.color = '#1A1A1A';
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <script>
+    (function () {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           regs.forEach(function (r) { r.unregister(); });

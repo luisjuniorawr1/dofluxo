@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/agency/agency_context.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/update/app_update_gate.dart';
 import 'presentation/shared/widgets/dofluxo_bootstrap_loading.dart';
 import 'presentation/agency/agency_gate.dart';
 import 'presentation/auth/manager/auth_service.dart';
@@ -29,15 +30,23 @@ class _AppBootstrapState extends State<_AppBootstrap> {
   AgencyContext? _agencyContext;
   Object? _initError;
 
-  static ThemeData get _loadingTheme => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFD700),
-          brightness: Brightness.dark,
-        ),
-      );
+  static ThemeData _bootstrapTheme({required Brightness brightness}) => ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    scaffoldBackgroundColor:
+        brightness == Brightness.dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFFFFD700),
+      brightness: brightness,
+    ),
+  );
+
+  ThemeData get _loadingTheme {
+    final brightness = _themeProvider?.isDarkMode == true
+        ? Brightness.dark
+        : Brightness.light;
+    return _bootstrapTheme(brightness: brightness);
+  }
 
   @override
   void initState() {
@@ -47,6 +56,11 @@ class _AppBootstrapState extends State<_AppBootstrap> {
 
   Future<void> _initialize() async {
     try {
+      final themeProvider = await ThemeProvider.create();
+      if (mounted) {
+        setState(() => _themeProvider = themeProvider);
+      }
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -54,7 +68,6 @@ class _AppBootstrapState extends State<_AppBootstrap> {
 
       if (!mounted) return;
       setState(() {
-        _themeProvider = ThemeProvider();
         _agencyContext = AgencyContext();
       });
     } catch (e) {
@@ -105,7 +118,7 @@ class DofluxoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       title: 'DOFLUXO',
@@ -114,6 +127,7 @@ class DofluxoApp extends StatelessWidget {
       themeAnimationDuration: Duration.zero,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
+      builder: (context, child) => AppUpdateGate(child: child),
       home: const AuthGate(),
     );
   }

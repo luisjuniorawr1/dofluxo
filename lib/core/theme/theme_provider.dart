@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
+import 'theme_preference_store.dart';
 
 class ThemeProvider extends ChangeNotifier {
+  ThemeProvider({ThemeMode initialThemeMode = ThemeMode.light})
+    : _themeMode = initialThemeMode;
+
   Color _primaryColor = const Color(0xFFFFD700);
   String _agencyName = 'Pequi';
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode;
 
   ThemeData? _lightTheme;
   ThemeData? _darkTheme;
   Color? _themesPrimaryColor;
 
   Color get primaryColor => _primaryColor;
-  String get agencyName => _agencyName.trim().isNotEmpty ? _agencyName.trim() : 'Pequi';
+  String get agencyName =>
+      _agencyName.trim().isNotEmpty ? _agencyName.trim() : 'Pequi';
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
@@ -24,6 +29,17 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get darkTheme {
     _ensureThemes();
     return _darkTheme!;
+  }
+
+  /// Carrega preferência local de tema (sobrevive a deploy/reload).
+  static Future<ThemeProvider> create() async {
+    final stored = await ThemePreferenceStore.read();
+    final mode = switch (stored) {
+      'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
+    };
+    return ThemeProvider(initialThemeMode: mode);
   }
 
   void _ensureThemes() {
@@ -44,6 +60,15 @@ class ThemeProvider extends ChangeNotifier {
     _lightTheme = null;
     _darkTheme = null;
     _themesPrimaryColor = null;
+  }
+
+  Future<void> _persistThemeMode() async {
+    final value = switch (_themeMode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+      ThemeMode.light => 'light',
+    };
+    await ThemePreferenceStore.write(value);
   }
 
   void updateColor(Color newColor) {
@@ -73,16 +98,14 @@ class ThemeProvider extends ChangeNotifier {
     applySettings(primaryColor: color, agencyName: name);
   }
 
+  /// Reseta só branding (logout/troca de conta). Mantém tema claro/escuro.
   void resetToDefaults() {
-    _themeMode = ThemeMode.light;
-    applySettings(
-      primaryColor: const Color(0xFFFFD700),
-      agencyName: 'Pequi',
-    );
+    applySettings(primaryColor: const Color(0xFFFFD700), agencyName: 'Pequi');
   }
 
-  void toggleTheme() {
+  Future<void> toggleTheme() async {
     _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
+    await _persistThemeMode();
   }
 }
