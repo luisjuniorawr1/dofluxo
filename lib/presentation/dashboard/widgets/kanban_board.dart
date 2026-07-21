@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/agency_theme_colors.dart';
@@ -21,7 +22,7 @@ class KanbanBoard<T> extends StatefulWidget {
   final List<KanbanColumnConfig> columns;
   final Map<String, List<T>> itemsByColumn;
   final KanbanItemIdCallback<T> itemId;
-  final Widget Function(BuildContext context, T item) cardBuilder;
+  final KanbanCardBuilder<T> cardBuilder;
   final KanbanMoveCallback<T>? onMove;
   final KanbanItemTapCallback<T>? onTap;
 
@@ -87,39 +88,49 @@ class _KanbanBoardState<T> extends State<KanbanBoard<T>> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.stylus,
+        },
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
 
-        if (isMobile) {
-          return _MobileCarousel<T>(
-            pageController: _pageController,
-            currentPage: _currentPage,
-            isDragging: _isDragging,
-            columns: widget.columns,
-            buildColumn: (column) => _buildColumn(column, isMobileCarousel: true),
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            onGoToPage: _goToPage,
-            onPreviousPage: () => _goToPage(_currentPage - 1),
-            onNextPage: () => _goToPage(_currentPage + 1),
-          );
-        }
+          if (isMobile) {
+            return _MobileCarousel<T>(
+              pageController: _pageController,
+              currentPage: _currentPage,
+              isDragging: _isDragging,
+              columns: widget.columns,
+              buildColumn: (column) => _buildColumn(column, isMobileCarousel: true),
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              onGoToPage: _goToPage,
+              onPreviousPage: () => _goToPage(_currentPage - 1),
+              onNextPage: () => _goToPage(_currentPage + 1),
+            );
+          }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < widget.columns.length; i++)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: i == widget.columns.length - 1 ? 0 : KanbanConstants.columnSpacing,
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < widget.columns.length; i++)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: i == widget.columns.length - 1 ? 0 : KanbanConstants.columnSpacing,
+                    ),
+                    child: _buildColumn(widget.columns[i]),
                   ),
-                  child: _buildColumn(widget.columns[i]),
                 ),
-              ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

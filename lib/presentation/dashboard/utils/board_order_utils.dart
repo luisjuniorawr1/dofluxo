@@ -1,10 +1,39 @@
 import '../models/project_board_item.dart';
 
-/// Calcula valores de `boardOrder` para inserir cards entre posições existentes.
+/// Calcula posição e ordem de cards no Kanban.
 class BoardOrderUtils {
   BoardOrderUtils._();
 
   static const _step = 1024.0;
+
+  /// Converte índice visível do drop para índice real na coluna completa.
+  static int resolveKanbanTargetIndex({
+    required List<ProjectBoardItem> visibleColumn,
+    required List<ProjectBoardItem> fullColumn,
+    required String draggedProjectId,
+    required int visibleDropIndex,
+    int? visibleDragIndex,
+  }) {
+    final fullWithoutDragged =
+        fullColumn.where((item) => item.id != draggedProjectId).toList();
+
+    if (visibleDropIndex >= visibleColumn.length) {
+      return fullWithoutDragged.length;
+    }
+
+    final anchor = visibleColumn[visibleDropIndex];
+    final anchorFullIndex =
+        fullWithoutDragged.indexWhere((item) => item.id == anchor.id);
+    if (anchorFullIndex < 0) return fullWithoutDragged.length;
+
+    if (visibleDragIndex != null &&
+        visibleDragIndex >= 0 &&
+        visibleDragIndex < visibleDropIndex) {
+      return anchorFullIndex + 1;
+    }
+
+    return anchorFullIndex;
+  }
 
   static double orderForInsertIndex({
     required List<ProjectBoardItem> columnItems,

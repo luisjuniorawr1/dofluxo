@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../config/dashboard_layout_breakpoints.dart';
@@ -22,11 +23,16 @@ class DashboardBoardLayout extends StatefulWidget {
   const DashboardBoardLayout({
     super.key,
     required this.itemsByZone,
+    required this.fullItemsByZone,
     this.onProjectMove,
     this.onProjectTap,
   });
 
+  /// Lista visível (respeita filtros Job / Planejamento).
   final Map<String, List<ProjectBoardItem>> itemsByZone;
+
+  /// Lista completa (sem filtro) para calcular ordem real no backend.
+  final Map<String, List<ProjectBoardItem>> fullItemsByZone;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
 
@@ -38,6 +44,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   late final PageController _pageController;
   final ValueNotifier<String?> _draggingItemId = ValueNotifier(null);
   final ValueNotifier<bool> _isDragging = ValueNotifier(false);
+  final Set<String> _movingProjectIds = {};
   int _currentPage = 0;
 
   /// Estado otimista: posiciona o card no destino na hora do drop, antes de o
@@ -55,7 +62,6 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   @override
   void didUpdateWidget(covariant DashboardBoardLayout oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Novo snapshot do servidor chegou: passa a ser a fonte da verdade.
     if (!identical(oldWidget.itemsByZone, widget.itemsByZone)) {
       _optimisticBoard = null;
     }
@@ -93,7 +99,6 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
         entry.key: List<ProjectBoardItem>.from(entry.value),
     };
 
-    // Remove a ocorrência de workflow (espelhos são read-only e ficam intactos).
     for (final column in KanbanConstants.allZones) {
       if (column.isMirror) continue;
       clone[column.id]?.removeWhere((i) => i.id == item.id);
@@ -109,33 +114,73 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   }
 
   Future<void> _handleMove(
-    ProjectBoardItem item,
+    KanbanDragData<ProjectBoardItem> dragData,
     String targetColumnId,
-    int targetIndex,
+    int visibleDropIndex,
   ) async {
     final onMove = widget.onProjectMove;
     if (onMove == null) return;
 
+    final item = dragData.item;
+    if (_movingProjectIds.contains(item.id)) return;
+
     final zone = KanbanConstants.findById(targetColumnId)?.zoneId;
     if (zone == null || !zone.acceptsDragDrop) return;
 
-    final columnItems = _displayedBoard[targetColumnId] ?? const [];
+    final visibleColumn = _displayedBoard[targetColumnId] ?? const [];
+    final fullColumn = widget.fullItemsByZone[targetColumnId] ?? const [];
+
+    final visibleDragIndex = dragData.fromColumnId == targetColumnId
+        ? dragData.visibleDragIndex
+        : null;
+
+    final realIndex = BoardOrderUtils.resolveKanbanTargetIndex(
+      visibleColumn: visibleColumn,
+      fullColumn: fullColumn,
+      draggedProjectId: item.id,
+      visibleDropIndex: visibleDropIndex,
+      visibleDragIndex: visibleDragIndex,
+    );
+
+    final sourceZone = KanbanConstants.findById(dragData.fromColumnId)?.zoneId;
+    if (sourceZone == zone) {
+      final fromFullIndex = fullColumn.indexWhere((entry) => entry.id == item.id);
+      if (fromFullIndex >= 0 &&
+          (realIndex == fromFullIndex || realIndex == fromFullIndex + 1)) {
+        return;
+      }
+    }
+
     final boardOrder = BoardOrderUtils.orderForInsertIndex(
-      columnItems: columnItems,
-      insertIndex: targetIndex,
+      columnItems: fullColumn,
+      insertIndex: realIndex,
       draggedProjectId: item.id,
     );
 
-    _applyOptimisticMove(item, targetColumnId, targetIndex);
+    _applyOptimisticMove(item, targetColumnId, visibleDropIndex);
     _onDragEnded();
 
-    await onMove(item.id, zone, targetIndex, boardOrder);
+    _movingProjectIds.add(item.id);
+    try {
+      await onMove(item.id, zone, realIndex, boardOrder);
+    } finally {
+      _movingProjectIds.remove(item.id);
+    }
   }
 
-  Widget _buildCard(BuildContext context, KanbanColumnConfig column, ProjectBoardItem item) {
+  Widget _buildCard(
+    BuildContext context,
+    KanbanColumnConfig column,
+    ProjectBoardItem item, {
+    bool isDragging = false,
+    bool isPlaceholder = false,
+  }) {
     return ProjectBoardCard(
       item: item,
       zoneCardColor: column.cardHeaderColor,
+      isDragging: isDragging,
+      isPlaceholder: isPlaceholder,
+      interactive: !isPlaceholder && !isDragging,
     );
   }
 
@@ -147,7 +192,14 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
       column: column,
       items: _displayedBoard[column.id] ?? const [],
       itemId: (item) => item.id,
-      cardBuilder: (context, item) => _buildCard(context, column, item),
+      cardBuilder: (context, item, {isDragging = false, isPlaceholder = false}) =>
+          _buildCard(
+        context,
+        column,
+        item,
+        isDragging: isDragging,
+        isPlaceholder: isPlaceholder,
+      ),
       draggingItemId: _draggingItemId,
       onMove: widget.onProjectMove == null ? null : _handleMove,
       onTap: widget.onProjectTap == null ? null : (item) => widget.onProjectTap!(item.id),
@@ -179,47 +231,57 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.stylus,
+        },
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
 
-        if (isMobile) {
-          return _MobileCarousel(
-            pageController: _pageController,
-            currentPage: _currentPage,
-            isDragging: _isDragging,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            onGoToPage: (index) {
-              if (index < 0 || index >= KanbanConstants.mobileZones.length) return;
-              _pageController.animateToPage(
-                index,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutCubic,
-              );
-            },
-            buildZone: (column) => _buildZone(column, isMobileCarousel: true),
-          );
-        }
+          if (isMobile) {
+            return _MobileCarousel(
+              pageController: _pageController,
+              currentPage: _currentPage,
+              isDragging: _isDragging,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              onGoToPage: (index) {
+                if (index < 0 || index >= KanbanConstants.mobileZones.length) return;
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              buildZone: (column) => _buildZone(column, isMobileCarousel: true),
+            );
+          }
 
-        final layout = KanbanConstants.desktopLayout;
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < layout.length; i++) ...[
-              Expanded(
-                flex: layout[i].flex,
-                child: _buildStackedGroup(layout[i]),
-              ),
-              if (i < layout.length - 1)
-                SizedBox(
-                  width: layout[i].gapAfter > 0
-                      ? layout[i].gapAfter
-                      : KanbanConstants.columnSpacing,
+          final layout = KanbanConstants.desktopLayout;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < layout.length; i++) ...[
+                Expanded(
+                  flex: layout[i].flex,
+                  child: _buildStackedGroup(layout[i]),
                 ),
+                if (i < layout.length - 1)
+                  SizedBox(
+                    width: layout[i].gapAfter > 0
+                        ? layout[i].gapAfter
+                        : KanbanConstants.columnSpacing,
+                  ),
+              ],
             ],
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/theme_utils.dart';
@@ -10,23 +11,32 @@ class KanbanDragData<T> {
     required this.item,
     required this.itemId,
     required this.fromColumnId,
+    this.visibleDragIndex,
   });
 
   final T item;
   final String itemId;
   final String fromColumnId;
+  final int? visibleDragIndex;
 }
 
 typedef KanbanMoveCallback<T> = Future<void> Function(
-  T item,
+  KanbanDragData<T> dragData,
   String targetColumnId,
-  int targetIndex,
+  int visibleDropIndex,
 );
 
 typedef KanbanItemTapCallback<T> = void Function(T item);
 typedef KanbanItemIdCallback<T> = String Function(T item);
 
-/// Coluna Kanban com corpo scrollável e drop targets invisíveis por índice.
+typedef KanbanCardBuilder<T> = Widget Function(
+  BuildContext context,
+  T item, {
+  bool isDragging,
+  bool isPlaceholder,
+});
+
+/// Coluna Kanban com corpo scrollável e drop targets por card / fim / vazio.
 class KanbanColumn<T> extends StatelessWidget {
   const KanbanColumn({
     super.key,
@@ -45,7 +55,7 @@ class KanbanColumn<T> extends StatelessWidget {
   final KanbanColumnConfig column;
   final List<T> items;
   final KanbanItemIdCallback<T> itemId;
-  final Widget Function(BuildContext context, T item) cardBuilder;
+  final KanbanCardBuilder<T> cardBuilder;
   final ValueListenable<String?> draggingItemId;
   final KanbanMoveCallback<T>? onMove;
   final KanbanItemTapCallback<T>? onTap;
@@ -58,37 +68,55 @@ class KanbanColumn<T> extends StatelessWidget {
     final bodyColor = KanbanConstants.columnBodyBackground(column);
     final effectiveMove = column.acceptsDragDrop ? onMove : null;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: bodyColor,
-        borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: _ColumnHeader(column: column, itemCount: items.length),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: _ColumnHeader(column: column, itemCount: items.length),
+        ),
+        const SizedBox(height: KanbanConstants.headerListGap),
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: bodyColor,
+              borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
             ),
-            const SizedBox(height: KanbanConstants.headerListGap),
-            Expanded(
-              child: ValueListenableBuilder<String?>(
-                valueListenable: draggingItemId,
-                builder: (context, draggingId, _) {
-                  return _buildColumnBody(
-                    context: context,
-                    isDragging: draggingId != null,
-                    draggingId: draggingId,
-                    effectiveMove: effectiveMove,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final feedbackWidth =
+                      constraints.maxWidth.clamp(120.0, 360.0);
+
+                  return ValueListenableBuilder<String?>(
+                    valueListenable: draggingItemId,
+                    builder: (context, draggingId, _) {
+                      return ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(
+                          dragDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.trackpad,
+                            PointerDeviceKind.stylus,
+                          },
+                        ),
+                        child: _buildColumnBody(
+                          context: context,
+                          isDragging: draggingId != null,
+                          draggingId: draggingId,
+                          effectiveMove: effectiveMove,
+                          feedbackWidth: feedbackWidth,
+                        ),
+                      );
+                    },
                   );
                 },
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -97,19 +125,23 @@ class KanbanColumn<T> extends StatelessWidget {
     required bool isDragging,
     required String? draggingId,
     required KanbanMoveCallback<T>? effectiveMove,
+    required double feedbackWidth,
   }) {
     if (items.isEmpty) {
-      return _InvisibleDropSlot<T>(
-        insertIndex: 0,
+      return _DropTargetShell<T>(
         columnId: column.id,
         columnItems: items,
         itemId: itemId,
+        dropIndex: 0,
+        highlightColor: column.cardHeaderColor,
         expand: true,
         onMove: effectiveMove,
+        child: _EmptyColumnHint(highlightColor: column.cardHeaderColor),
       );
     }
 
     return CustomScrollView(
+      primary: false,
       physics: isMobileCarousel
           ? const BouncingScrollPhysics()
           : const ClampingScrollPhysics(),
@@ -145,27 +177,35 @@ class KanbanColumn<T> extends StatelessWidget {
                           item: item,
                           itemId: id,
                           fromColumnId: column.id,
+                          visibleDragIndex: index,
                         ),
+                        feedbackWidth: feedbackWidth,
                         enableDrag: effectiveMove != null,
                         isMobileLayout: isMobileCarousel,
+                        buildContent: ({isDragging = false, isPlaceholder = false}) =>
+                            cardBuilder(
+                          context,
+                          item,
+                          isDragging: isDragging,
+                          isPlaceholder: isPlaceholder,
+                        ),
                         onTap: onTap == null ? null : () => onTap!(item),
                         onDragStarted:
                             onDragStarted == null ? null : () => onDragStarted!(id),
                         onDragEnded: onDragEnded,
-                        child: cardBuilder(context, item),
                       ),
                     ),
                   ),
                 );
 
-                if (effectiveMove == null) return card;
+                if (effectiveMove == null || isBeingDragged) return card;
 
-                return _CardDropSlot<T>(
-                  index: index,
+                return _DropTargetShell<T>(
                   columnId: column.id,
                   columnItems: items,
                   itemId: itemId,
-                  indicatorColor: column.cardHeaderColor,
+                  dropIndex: index,
+                  highlightColor: column.cardHeaderColor,
                   onMove: effectiveMove,
                   child: card,
                 );
@@ -178,13 +218,15 @@ class KanbanColumn<T> extends StatelessWidget {
           hasScrollBody: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: _InvisibleDropSlot<T>(
-              insertIndex: items.length,
+            child: _DropTargetShell<T>(
               columnId: column.id,
               columnItems: items,
               itemId: itemId,
+              dropIndex: items.length,
+              highlightColor: column.cardHeaderColor,
               expand: true,
               onMove: effectiveMove,
+              child: const SizedBox.expand(),
             ),
           ),
         ),
@@ -242,175 +284,101 @@ class _ColumnHeader extends StatelessWidget {
   }
 }
 
-class _InvisibleDropSlot<T> extends StatelessWidget {
-  const _InvisibleDropSlot({
-    required this.insertIndex,
-    required this.columnId,
-    required this.columnItems,
-    required this.itemId,
-    this.expand = false,
-    this.onMove,
-  });
+class _EmptyColumnHint extends StatelessWidget {
+  const _EmptyColumnHint({required this.highlightColor});
 
-  final int insertIndex;
-  final String columnId;
-  final List<T> columnItems;
-  final KanbanItemIdCallback<T> itemId;
-  final bool expand;
-  final KanbanMoveCallback<T>? onMove;
-
-  void _handleAccept(KanbanDragData<T> data) {
-    final fromIndex = columnItems.indexWhere((item) => itemId(item) == data.itemId);
-    final isSameColumn = data.fromColumnId == columnId;
-
-    if (isSameColumn && fromIndex != -1) {
-      if (insertIndex == fromIndex || insertIndex == fromIndex + 1) return;
-    }
-
-    onMove?.call(data.item, columnId, insertIndex);
-  }
+  final Color highlightColor;
 
   @override
   Widget build(BuildContext context) {
-    if (expand) {
-      return DragTarget<KanbanDragData<T>>(
-        onWillAcceptWithDetails: (details) =>
-            onMove != null && KanbanConstants.canAcceptDragFrom(details.data.fromColumnId),
-        onAcceptWithDetails: (details) => _handleAccept(details.data),
-        builder: (context, candidate, rejected) => const SizedBox.expand(),
-      );
-    }
+    final theme = Theme.of(context);
 
-    return DragTarget<KanbanDragData<T>>(
-      onWillAcceptWithDetails: (details) =>
-          onMove != null && KanbanConstants.canAcceptDragFrom(details.data.fromColumnId),
-      onAcceptWithDetails: (details) => _handleAccept(details.data),
-      builder: (context, candidate, rejected) {
-        return SizedBox(
-          height: KanbanConstants.dropSlotHeight,
-          width: double.infinity,
-        );
-      },
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Arraste um item para cá',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: highlightColor.withValues(alpha: 0.75),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// Envolve um card com um alvo de drop preciso: detecta metade superior/inferior
-/// para decidir o índice de inserção e mostra uma linha indicadora.
-class _CardDropSlot<T> extends StatefulWidget {
-  const _CardDropSlot({
-    required this.index,
+class _DropTargetShell<T> extends StatelessWidget {
+  const _DropTargetShell({
     required this.columnId,
     required this.columnItems,
     required this.itemId,
-    required this.indicatorColor,
-    required this.onMove,
+    required this.dropIndex,
+    required this.highlightColor,
     required this.child,
+    this.expand = false,
+    this.onMove,
   });
 
-  final int index;
   final String columnId;
   final List<T> columnItems;
   final KanbanItemIdCallback<T> itemId;
-  final Color indicatorColor;
-  final KanbanMoveCallback<T>? onMove;
+  final int dropIndex;
+  final Color highlightColor;
   final Widget child;
-
-  @override
-  State<_CardDropSlot<T>> createState() => _CardDropSlotState<T>();
-}
-
-class _CardDropSlotState<T> extends State<_CardDropSlot<T>> {
-  final GlobalKey _cardKey = GlobalKey();
-  bool _hoverTop = false;
-  bool _hoverBottom = false;
+  final bool expand;
+  final KanbanMoveCallback<T>? onMove;
 
   bool _canAccept(KanbanDragData<T> data) {
-    return widget.onMove != null &&
-        KanbanConstants.canAcceptDragFrom(data.fromColumnId);
-  }
-
-  bool _isTopHalf(Offset globalOffset) {
-    final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return true;
-    final local = box.globalToLocal(globalOffset);
-    return local.dy < box.size.height / 2;
-  }
-
-  void _updateHover(Offset globalOffset) {
-    final top = _isTopHalf(globalOffset);
-    if (top != _hoverTop || top == _hoverBottom) {
-      setState(() {
-        _hoverTop = top;
-        _hoverBottom = !top;
-      });
-    }
-  }
-
-  void _clearHover() {
-    if (_hoverTop || _hoverBottom) {
-      setState(() {
-        _hoverTop = false;
-        _hoverBottom = false;
-      });
-    }
-  }
-
-  void _accept(KanbanDragData<T> data, Offset globalOffset) {
-    final insertIndex =
-        _isTopHalf(globalOffset) ? widget.index : widget.index + 1;
-    _clearHover();
+    if (onMove == null) return false;
+    if (!KanbanConstants.canAcceptDragFrom(data.fromColumnId)) return false;
 
     final fromIndex =
-        widget.columnItems.indexWhere((item) => widget.itemId(item) == data.itemId);
-    final isSameColumn = data.fromColumnId == widget.columnId;
+        columnItems.indexWhere((item) => itemId(item) == data.itemId);
+    final isSameColumn = data.fromColumnId == columnId;
     if (isSameColumn && fromIndex != -1) {
-      if (insertIndex == fromIndex || insertIndex == fromIndex + 1) return;
+      if (dropIndex == fromIndex || dropIndex == fromIndex + 1) return false;
     }
 
-    widget.onMove?.call(data.item, widget.columnId, insertIndex);
+    return true;
+  }
+
+  void _handleAccept(KanbanDragData<T> data) {
+    if (!_canAccept(data)) return;
+    onMove?.call(data, columnId, dropIndex);
   }
 
   @override
   Widget build(BuildContext context) {
     return DragTarget<KanbanDragData<T>>(
       onWillAcceptWithDetails: (details) => _canAccept(details.data),
-      onMove: (details) {
-        if (_canAccept(details.data)) _updateHover(details.offset);
-      },
-      onLeave: (_) => _clearHover(),
-      onAcceptWithDetails: (details) => _accept(details.data, details.offset),
-      builder: (context, candidate, rejected) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DropIndicator(visible: _hoverTop, color: widget.indicatorColor),
-            KeyedSubtree(key: _cardKey, child: widget.child),
-            _DropIndicator(visible: _hoverBottom, color: widget.indicatorColor),
-          ],
+      onAcceptWithDetails: (details) => _handleAccept(details.data),
+      builder: (context, candidateData, rejectedData) {
+        final isHighlighted = candidateData.isNotEmpty;
+
+        final content = AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          decoration: isHighlighted
+              ? BoxDecoration(
+                  color: highlightColor.withValues(alpha: 0.14),
+                  border: Border.all(
+                    color: highlightColor.withValues(alpha: 0.85),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                )
+              : null,
+          child: child,
         );
+
+        if (expand) {
+          return SizedBox.expand(child: content);
+        }
+
+        return content;
       },
-    );
-  }
-}
-
-class _DropIndicator extends StatelessWidget {
-  const _DropIndicator({required this.visible, required this.color});
-
-  final bool visible;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
-      height: visible ? 4 : 0,
-      margin: EdgeInsets.symmetric(horizontal: 6, vertical: visible ? 3 : 0),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(3),
-      ),
     );
   }
 }

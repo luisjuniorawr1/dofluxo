@@ -73,5 +73,48 @@ void main() {
 
       expect(order, 200);
     });
+
+    test('resolveKanbanTargetIndex appends when drop is after visible list', () {
+      final visible = [item('a'), item('b')];
+      final full = [item('a'), item('b'), item('c'), item('d')];
+
+      final index = BoardOrderUtils.resolveKanbanTargetIndex(
+        visibleColumn: visible,
+        fullColumn: full,
+        draggedProjectId: 'x',
+        visibleDropIndex: 2,
+      );
+
+      expect(index, 4);
+    });
+
+    test('resolveKanbanTargetIndex maps visible anchor to full column', () {
+      final visible = [item('a'), item('c')];
+      final full = [item('a'), item('b'), item('c'), item('d')];
+
+      final index = BoardOrderUtils.resolveKanbanTargetIndex(
+        visibleColumn: visible,
+        fullColumn: full,
+        draggedProjectId: 'x',
+        visibleDropIndex: 1,
+      );
+
+      expect(index, 2);
+    });
+
+    test('resolveKanbanTargetIndex adds one when dragging down same column', () {
+      final visible = [item('a'), item('b'), item('c')];
+      final full = [item('a'), item('b'), item('c')];
+
+      final index = BoardOrderUtils.resolveKanbanTargetIndex(
+        visibleColumn: visible,
+        fullColumn: full,
+        draggedProjectId: 'a',
+        visibleDropIndex: 2,
+        visibleDragIndex: 0,
+      );
+
+      expect(index, 2);
+    });
   });
 }

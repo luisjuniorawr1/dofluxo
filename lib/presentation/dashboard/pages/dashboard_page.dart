@@ -172,7 +172,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   return _buildNothingSelectedState(context);
                 }
 
-                final board = snapshot.hasData
+                final visibleBoard = snapshot.hasData
                     ? DashboardBoardMapper.groupSnapshot(
                         snapshot.data!,
                         includeJobs: _showJobs,
@@ -180,8 +180,17 @@ class _DashboardPageState extends State<DashboardPage> {
                       )
                     : DashboardBoardMapper.emptyBoard();
 
+                final fullBoard = snapshot.hasData
+                    ? DashboardBoardMapper.groupSnapshot(
+                        snapshot.data!,
+                        includeJobs: true,
+                        includePlanning: true,
+                      )
+                    : DashboardBoardMapper.emptyBoard();
+
                 return DashboardBoardLayout(
-                  itemsByZone: board,
+                  itemsByZone: visibleBoard,
+                  fullItemsByZone: fullBoard,
                   onProjectMove: _moveProject,
                   onProjectTap: _openProject,
                 );

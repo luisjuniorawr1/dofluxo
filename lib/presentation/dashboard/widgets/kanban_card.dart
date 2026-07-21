@@ -16,8 +16,9 @@ class KanbanCard<T> extends StatefulWidget {
   const KanbanCard({
     super.key,
     required this.item,
-    required this.child,
+    required this.buildContent,
     required this.dragData,
+    this.feedbackWidth,
     this.onTap,
     this.onDragStarted,
     this.onDragEnded,
@@ -26,8 +27,9 @@ class KanbanCard<T> extends StatefulWidget {
   });
 
   final T item;
-  final Widget child;
+  final Widget Function({bool isDragging, bool isPlaceholder}) buildContent;
   final KanbanDragData<T> dragData;
+  final double? feedbackWidth;
   final VoidCallback? onTap;
   final VoidCallback? onDragStarted;
   final VoidCallback? onDragEnded;
@@ -39,64 +41,71 @@ class KanbanCard<T> extends StatefulWidget {
 }
 
 class _KanbanCardState<T> extends State<KanbanCard<T>> {
-  final GlobalKey _sizeKey = GlobalKey();
-  Size? _dragSize;
+  bool _isDragging = false;
+  bool _suppressTap = false;
 
-  Size? _readChildSize() {
-    final renderObject = _sizeKey.currentContext?.findRenderObject();
-    if (renderObject is RenderBox && renderObject.hasSize) {
-      return renderObject.size;
-    }
-    return null;
+  void _handleTap() {
+    if (_isDragging || _suppressTap || widget.onTap == null) return;
+    widget.onTap!();
   }
 
   void _handleDragStarted() {
-    _dragSize = _readChildSize();
+    setState(() => _isDragging = true);
     widget.onDragStarted?.call();
   }
 
-  void _handleDragEnded([DraggableDetails? _]) {
-    _dragSize = null;
+  void _handleDragEnd(DraggableDetails details) {
+    if (details.wasAccepted) {
+      _suppressTap = true;
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _suppressTap = false);
+      });
+    }
+    setState(() => _isDragging = false);
     widget.onDragEnded?.call();
   }
 
-  Widget _sizedChild(Widget child) {
-    final size = _dragSize ?? _readChildSize();
-    if (size == null) return child;
-    return SizedBox(
-      width: size.width,
-      height: size.height,
-      child: child,
-    );
+  void _handleDragCanceled() {
+    setState(() => _isDragging = false);
+    widget.onDragEnded?.call();
   }
 
-  Widget _buildFeedback() {
+  double _resolveFeedbackWidth(BuildContext context) {
+    if (widget.feedbackWidth != null) return widget.feedbackWidth!;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    const columns = 5.0;
+    return (screenWidth / columns).clamp(120.0, 360.0);
+  }
+
+  Widget _buildFeedback(BuildContext context) {
     return Material(
-      elevation: 6,
-      shadowColor: Colors.black.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
       color: Colors.transparent,
-      child: _sizedChild(widget.child),
+      elevation: 10,
+      shadowColor: Colors.black.withValues(alpha: 0.35),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: _resolveFeedbackWidth(context),
+        child: widget.buildContent(isDragging: true, isPlaceholder: false),
+      ),
     );
   }
 
-  Widget _buildDragPlaceholder() => _sizedChild(const SizedBox.shrink());
+  Widget _buildPlaceholder() {
+    return IgnorePointer(
+      child: Opacity(
+        opacity: 0.3,
+        child: widget.buildContent(isDragging: false, isPlaceholder: true),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cardContent = KeyedSubtree(
-      key: _sizeKey,
-      child: MouseRegion(
-        cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
-        child: widget.child,
-      ),
-    );
-
     final tappable = GestureDetector(
-      onTap: widget.onTap,
+      onTap: widget.onTap == null ? null : _handleTap,
       behavior: HitTestBehavior.opaque,
-      child: cardContent,
+      child: widget.buildContent(isDragging: _isDragging, isPlaceholder: false),
     );
 
     if (!widget.enableDrag) return tappable;
@@ -109,15 +118,15 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
       return LongPressDraggable<KanbanDragData<T>>(
         data: widget.dragData,
         rootOverlay: true,
-        dragAnchorStrategy: childDragAnchorStrategy,
-        feedback: _buildFeedback(),
-        childWhenDragging: _buildDragPlaceholder(),
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: _buildFeedback(context),
+        childWhenDragging: _buildPlaceholder(),
+        maxSimultaneousDrags: 1,
         delay: const Duration(milliseconds: 120),
         hapticFeedbackOnStart: false,
         onDragStarted: _handleDragStarted,
-        onDragCompleted: _handleDragEnded,
-        onDragEnd: _handleDragEnded,
-        onDraggableCanceled: (_, _) => _handleDragEnded(),
+        onDragEnd: _handleDragEnd,
+        onDraggableCanceled: (_, _) => _handleDragCanceled(),
         child: tappable,
       );
     }
@@ -127,14 +136,13 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
       child: Draggable<KanbanDragData<T>>(
         data: widget.dragData,
         rootOverlay: true,
-        dragAnchorStrategy: childDragAnchorStrategy,
-        feedback: _buildFeedback(),
-        childWhenDragging: _buildDragPlaceholder(),
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: _buildFeedback(context),
+        childWhenDragging: _buildPlaceholder(),
         maxSimultaneousDrags: 1,
         onDragStarted: _handleDragStarted,
-        onDragCompleted: _handleDragEnded,
-        onDragEnd: _handleDragEnded,
-        onDraggableCanceled: (_, _) => _handleDragEnded(),
+        onDragEnd: _handleDragEnd,
+        onDraggableCanceled: (_, _) => _handleDragCanceled(),
         child: tappable,
       ),
     );
