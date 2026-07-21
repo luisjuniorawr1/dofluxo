@@ -33,9 +33,8 @@ Write-Host ""
 # --- 1) Atualizar do GitHub --------------------------------------------------
 Write-Host ">> git pull" -ForegroundColor Cyan
 git pull --ff-only
-Assert-LastExit "git pull"
-# Se ff-only falhar, tenta pull normal
 if ($LASTEXITCODE -ne 0) {
+    Write-Host "   ff-only falhou; tentando git pull normal..." -ForegroundColor DarkGray
     git pull
     Assert-LastExit "git pull"
 }

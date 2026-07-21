@@ -319,7 +319,13 @@ Força clientes com o app aberto a atualizar quando uma nova versão é publicad
 
 | Componente | Papel |
 |------------|-------|
-| `deploy.ps1` (raiz) | Incrementa build em `pubspec.yaml`, builda com `--dart-define=APP_VERSION=…`, `firebase deploy --only hosting` |
+**Uso (comando único):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+```
+
+O script faz: `git pull` → commit de mudanças locais (se houver) → bump de versão → build web → `firebase deploy --only hosting` → `git push` da versão.
 | `deploy-web.ps1` | Atalho legado → chama `deploy.ps1` |
 | `lib/core/update/app_update_logic.dart` | `normalizeVersionJson`, `isUpdateRequired`, `formatCountdown` |
 | `lib/core/update/app_version_service*.dart` | Lê `/version.json`; foco/`visibilitychange`; reload síncrono |
