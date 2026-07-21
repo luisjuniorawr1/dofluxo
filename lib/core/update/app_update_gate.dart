@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app_update_logic.dart';
+import 'app_version.dart';
 import 'app_version_service.dart' as version_service;
 
 const Duration _kCheckInterval = Duration(seconds: 5);
@@ -100,7 +101,8 @@ class _AppUpdateGateState extends State<AppUpdateGate> {
         return;
       }
 
-      _sessionVersion ??= remote;
+      _sessionVersion ??=
+          kCompiledAppVersion.isNotEmpty ? kCompiledAppVersion : remote;
 
       final mustUpdate = isUpdateRequired(
         sessionVersion: _sessionVersion,

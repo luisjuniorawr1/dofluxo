@@ -56,16 +56,18 @@ class _AppBootstrapState extends State<_AppBootstrap> {
 
   Future<void> _initialize() async {
     try {
+      final themeProvider = await ThemeProvider.create();
+      if (mounted) {
+        setState(() => _themeProvider = themeProvider);
+      }
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
       await AuthService.configure();
 
-      final themeProvider = await ThemeProvider.create();
-
       if (!mounted) return;
       setState(() {
-        _themeProvider = themeProvider;
         _agencyContext = AgencyContext();
       });
     } catch (e) {
