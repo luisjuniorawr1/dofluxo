@@ -136,7 +136,6 @@ class KanbanColumn<T> extends StatelessWidget {
         columnItems: items,
         itemId: itemId,
         dropIndex: 0,
-        highlightColor: column.cardHeaderColor,
         expand: true,
         onMove: effectiveMove,
         child: _EmptyColumnHint(highlightColor: column.cardHeaderColor),
@@ -213,7 +212,6 @@ class KanbanColumn<T> extends StatelessWidget {
                   columnItems: items,
                   itemId: itemId,
                   dropIndex: index,
-                  highlightColor: column.cardHeaderColor,
                   onMove: effectiveMove,
                   child: card,
                 );
@@ -231,7 +229,6 @@ class KanbanColumn<T> extends StatelessWidget {
               columnItems: items,
               itemId: itemId,
               dropIndex: items.length,
-              highlightColor: column.cardHeaderColor,
               expand: true,
               onMove: effectiveMove,
               child: const SizedBox.expand(),
@@ -323,7 +320,6 @@ class _DropTargetShell<T> extends StatelessWidget {
     required this.columnItems,
     required this.itemId,
     required this.dropIndex,
-    required this.highlightColor,
     required this.child,
     this.expand = false,
     this.onMove,
@@ -333,7 +329,6 @@ class _DropTargetShell<T> extends StatelessWidget {
   final List<T> columnItems;
   final KanbanItemIdCallback<T> itemId;
   final int dropIndex;
-  final Color highlightColor;
   final Widget child;
   final bool expand;
   final KanbanMoveCallback<T>? onMove;
@@ -366,29 +361,11 @@ class _DropTargetShell<T> extends StatelessWidget {
       onWillAcceptWithDetails: (details) => _canAccept(details.data),
       onAcceptWithDetails: (details) => _handleAccept(details.data),
       builder: (context, candidateData, rejectedData) {
-        final isHighlighted = candidateData.isNotEmpty;
-
-        final content = AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          decoration: isHighlighted
-              ? BoxDecoration(
-                  color: highlightColor.withValues(alpha: 0.14),
-                  border: Border.all(
-                    color: highlightColor.withValues(alpha: 0.85),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                )
-              : null,
-          child: child,
-        );
-
+        // Sem highlight visual de drop (borda/fundo na coluna).
         if (expand) {
-          return SizedBox.expand(child: content);
+          return SizedBox.expand(child: child);
         }
-
-        return content;
+        return child;
       },
     );
   }
