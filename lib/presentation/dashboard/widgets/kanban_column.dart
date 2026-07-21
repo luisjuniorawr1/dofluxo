@@ -163,7 +163,12 @@ class KanbanColumn<T> extends StatelessWidget {
                 final id = itemId(item);
                 final isBeingDragged = draggingId == id;
 
-                if (isBeingDragged && effectiveMove == null) {
+                // Hide only in non-mirror columns that don't own the drag.
+                // Mirror zones (Incêndios / Postagens) keep the same itemId
+                // visible while the workflow card is dragged.
+                if (isBeingDragged &&
+                    effectiveMove == null &&
+                    !column.isMirror) {
                   return const SizedBox.shrink();
                 }
 
