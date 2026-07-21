@@ -13,15 +13,12 @@ class RoleBadge extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    // Dono usa primary sólido — tint fraco some no card escuro.
     final (background, foreground) = switch (role) {
-      AgencyRole.owner => () {
-          final tinted = ThemeUtils.tintedBadgeColors(
-            accent: scheme.primary,
-            surface: scheme.surfaceContainerLow,
-            brightness: theme.brightness,
-          );
-          return (tinted.background, tinted.foreground);
-        }(),
+      AgencyRole.owner => (
+          scheme.primary,
+          scheme.onPrimary,
+        ),
       AgencyRole.admin => (
           scheme.secondaryContainer,
           scheme.onSecondaryContainer,
@@ -39,7 +36,7 @@ class RoleBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: Color.alphaBlend(
-            foreground.withValues(alpha: 0.22),
+            foreground.withValues(alpha: 0.28),
             background,
           ),
         ),

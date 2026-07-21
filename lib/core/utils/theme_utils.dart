@@ -77,7 +77,8 @@ class ThemeUtils {
     required Brightness brightness,
     double minRatio = 4.5,
   }) {
-    final mix = brightness == Brightness.dark ? 0.55 : 0.62;
+    // Dark: mistura bem alta — tint fraco vira “cinza fantasma” no card.
+    final mix = brightness == Brightness.dark ? 0.88 : 0.72;
     final background = Color.lerp(surface, accent, mix)!;
     final foreground = getContrastColor(background);
     // Se ainda falhar (cor intermediária), força preto/branco pelo fallback.
