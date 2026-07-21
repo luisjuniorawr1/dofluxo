@@ -79,11 +79,18 @@ class TeamMemberTile extends StatelessWidget {
                         ),
                       ),
                       if (isCurrentUser)
-                        Text(
-                          'Você',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Você',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       RoleBadge(role: membership.role),

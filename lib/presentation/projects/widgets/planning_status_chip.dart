@@ -20,9 +20,15 @@ class PlanningStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textColor = ThemeUtils.readableOn(status.color);
-    final background = selected ? status.color : status.color.withValues(alpha: 0.15);
-    final foreground = selected ? textColor : status.color;
+    final scheme = theme.colorScheme;
+    final selectedText = ThemeUtils.readableOn(status.color);
+    final tinted = ThemeUtils.tintedBadgeColors(
+      accent: status.color,
+      surface: scheme.surface,
+      brightness: theme.brightness,
+    );
+    final background = selected ? status.color : tinted.background;
+    final foreground = selected ? selectedText : tinted.foreground;
 
     final chip = Container(
       padding: EdgeInsets.symmetric(
@@ -33,7 +39,12 @@ class PlanningStatusChip extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: selected ? status.color : status.color.withValues(alpha: 0.5),
+          color: selected
+              ? status.color
+              : Color.alphaBlend(
+                  status.color.withValues(alpha: 0.45),
+                  scheme.outlineVariant,
+                ),
           width: selected ? 2 : 1,
         ),
       ),
@@ -44,7 +55,7 @@ class PlanningStatusChip extends StatelessWidget {
             width: compact ? 6 : 8,
             height: compact ? 6 : 8,
             decoration: BoxDecoration(
-              color: selected ? textColor : status.color,
+              color: selected ? selectedText : status.color,
               shape: BoxShape.circle,
             ),
           ),

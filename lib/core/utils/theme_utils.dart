@@ -63,7 +63,28 @@ class ThemeUtils {
     final theme = Theme.of(context);
     return theme.textTheme.bodySmall!.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
     );
+  }
+
+  /// Fundo + texto de badge tingido pela cor de destaque, com contraste ≥ 4.5.
+  static ({Color background, Color foreground}) tintedBadgeColors({
+    required Color accent,
+    required Color surface,
+    required Brightness brightness,
+    double minRatio = 4.5,
+  }) {
+    final background = Color.alphaBlend(
+      accent.withValues(alpha: brightness == Brightness.dark ? 0.34 : 0.22),
+      surface,
+    );
+    final foreground = readableAccent(
+      accent: accent,
+      background: background,
+      fallback: getContrastColor(background),
+      minRatio: minRatio,
+    );
+    return (background: background, foreground: foreground);
   }
 
   /// Destaque de marca seguro para uso em superfícies de conteúdo.
@@ -74,6 +95,7 @@ class ThemeUtils {
       accent: agency.brand,
       background: background,
       fallback: Theme.of(context).colorScheme.onSurface,
+      minRatio: 4.5,
     );
   }
 }

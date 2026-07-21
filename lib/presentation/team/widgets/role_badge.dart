@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
+import '../../../core/utils/theme_utils.dart';
 
 class RoleBadge extends StatelessWidget {
   const RoleBadge({super.key, required this.role});
@@ -10,18 +11,20 @@ class RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     final (background, foreground) = switch (role) {
       AgencyRole.owner => (
-          theme.colorScheme.primary.withValues(alpha: 0.15),
-          theme.colorScheme.primary,
+          scheme.primaryContainer,
+          scheme.onPrimaryContainer,
         ),
       AgencyRole.admin => (
-          theme.colorScheme.secondaryContainer,
-          theme.colorScheme.onSecondaryContainer,
+          scheme.secondaryContainer,
+          scheme.onSecondaryContainer,
         ),
       AgencyRole.member => (
-          theme.colorScheme.surfaceContainerHighest,
-          theme.colorScheme.onSurfaceVariant,
+          scheme.surfaceContainerHighest,
+          scheme.onSurface,
         ),
     };
 
