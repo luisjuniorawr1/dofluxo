@@ -118,17 +118,21 @@ class DofluxoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-
-    return MaterialApp(
-      title: 'DOFLUXO',
-      debugShowCheckedModeBanner: false,
-      themeMode: themeProvider.themeMode,
-      themeAnimationDuration: Duration.zero,
-      theme: themeProvider.lightTheme,
-      darkTheme: themeProvider.darkTheme,
-      builder: (context, child) => AppUpdateGate(child: child),
-      home: const AuthGate(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'DOFLUXO',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeProvider.themeMode,
+          themeAnimationDuration: Duration.zero,
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
+          builder: (context, nestedChild) => AppUpdateGate(child: nestedChild),
+          home: child,
+        );
+      },
+      // AuthGate estável: não recria a árvore ao trocar só ThemeMode.
+      child: const AuthGate(),
     );
   }
 }

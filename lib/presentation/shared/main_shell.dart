@@ -67,8 +67,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 900;
-    final themeProvider = context.watch<ThemeProvider>();
-    final agencyName = themeProvider.agencyName;
+    final agencyName = context.select<ThemeProvider, String>((p) => p.agencyName);
 
     return Scaffold(
       appBar: isDesktop
@@ -111,7 +110,7 @@ class _MainShellState extends State<MainShell> {
   Widget _buildSidebar({bool isMobile = false}) {
     final theme = Theme.of(context);
     final onPrimary = theme.colorScheme.onPrimary;
-    final agencyName = context.watch<ThemeProvider>().agencyName;
+    final agencyName = context.select<ThemeProvider, String>((p) => p.agencyName);
 
     return Container(
       width: 250,

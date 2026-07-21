@@ -46,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    final agencyName = context.watch<ThemeProvider>().agencyName;
+    final agencyName = context.select<ThemeProvider, String>((p) => p.agencyName);
 
     return Scaffold(
       body: Stack(
