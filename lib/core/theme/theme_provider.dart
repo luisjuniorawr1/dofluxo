@@ -33,13 +33,17 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Carrega preferência local de tema (sobrevive a deploy/reload).
   static Future<ThemeProvider> create() async {
-    final stored = await ThemePreferenceStore.read();
-    final mode = switch (stored) {
-      'dark' => ThemeMode.dark,
-      'system' => ThemeMode.system,
-      _ => ThemeMode.light,
-    };
-    return ThemeProvider(initialThemeMode: mode);
+    try {
+      final stored = await ThemePreferenceStore.read();
+      final mode = switch (stored) {
+        'dark' => ThemeMode.dark,
+        'system' => ThemeMode.system,
+        _ => ThemeMode.light,
+      };
+      return ThemeProvider(initialThemeMode: mode);
+    } catch (_) {
+      return ThemeProvider();
+    }
   }
 
   void _ensureThemes() {

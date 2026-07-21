@@ -1,31 +1,51 @@
-/// Persistência de tema na web via localStorage (escrita síncrona).
+/// Persistencia de tema na web via localStorage (sem shared_preferences).
 library;
+
+import 'dart:convert';
 
 // ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'theme_preference_store.dart';
 
-Future<String?> readThemeMode() async {
+String? _readLocalStorageKey(String key) {
   try {
-    final stored = html.window.localStorage[ThemePreferenceStore.storageKey];
-    if (stored == 'dark' || stored == 'light' || stored == 'system') {
-      return stored;
-    }
-  } catch (_) {}
+    return html.window.localStorage[key];
+  } catch (_) {
+    return null;
+  }
+}
 
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString(ThemePreferenceStore.storageKey) ??
-      prefs.getString(ThemePreferenceStore.legacySharedPreferencesKey);
+String? _readLegacySharedPreferencesValue(String key) {
+  final raw = _readLocalStorageKey('flutter.$key');
+  if (raw == null || raw.isEmpty) return null;
+
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is String && decoded.isNotEmpty) return decoded;
+  } catch (_) {
+    return raw;
+  }
+
+  return null;
+}
+
+Future<String?> readThemeMode() async {
+  final stored = _readLocalStorageKey(ThemePreferenceStore.storageKey);
+  if (stored == 'dark' || stored == 'light' || stored == 'system') {
+    return stored;
+  }
+
+  final legacy = _readLegacySharedPreferencesValue(
+    ThemePreferenceStore.legacySharedPreferencesKey,
+  );
+  if (legacy == 'dark' || legacy == 'light' || legacy == 'system') {
+    return legacy;
+  }
+
+  return null;
 }
 
 Future<void> writeThemeMode(String value) async {
-  try {
-    html.window.localStorage[ThemePreferenceStore.storageKey] = value;
-  } catch (_) {}
-
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(ThemePreferenceStore.storageKey, value);
+  html.window.localStorage[ThemePreferenceStore.storageKey] = value;
 }
