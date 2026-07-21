@@ -50,12 +50,12 @@ Mobile: retorna `null` — `google_sign_in` está no `pubspec.yaml` mas **não i
 
 ### Kanban custom (não `appflowy_board`)
 
-Board implementado em `dashboard_workflow_board.dart`:
-- `DragTarget` por coluna (5 colunas unificadas)
-- Web/desktop: `Draggable` no card inteiro
-- Mobile: `LongPressDraggable` no card inteiro
+Board implementado em `kanban_column.dart` / `dashboard_board_layout.dart`:
+- `DragTarget` por coluna (layout unificado Job + Planejamento)
+- Web/desktop: drag no card; mobile: long-press quando aplicável
 - Tap no card → `ProjectDetailPage`
-- Coluna **Incêndios** com destaque visual (`isPriority`: borda, sombra, label)
+
+**UI travada (AGENTS.md D7):** o título da coluna (`_ColumnHeader`) fica **dentro** do container colorido (`DecoratedBox`), junto com a lista de cards. Não reverter para título flutuando acima do fundo cinza — mesmo ao refatorar drag/hover.
 
 **Removido:** painel lateral "Status do Projeto" (`project_status_panel.dart` — arquivo ainda no repo, não referenciado).
 

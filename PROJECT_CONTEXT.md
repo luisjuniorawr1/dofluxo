@@ -531,16 +531,18 @@ Migrado para `agencies/{uid}` no bootstrap. **Sem writes pela UI** após 3C; lei
 
 ## Handoff para outro agente
 
-1. Leia nesta ordem: **`PROJECT_CONTEXT.md`** → **`TECHNICAL_DOC.md`** → **`NEXT_STEPS.md`**.
-2. Valide o ambiente: `flutter pub get`, `flutter analyze`, `flutter test`.
-3. **Não reintroduza `appflowy_board`** — Kanban custom em `dashboard_workflow_board.dart`.
-4. **Não crie abas ou telas separadas** para Job vs Planejamento — uma Dashboard com filtros `Exibir:`.
-5. **Categorias de projeto** vivem em `projects` (`category`, `planningStatus`, `format`, etc.) — não usar coleção separada.
-6. Queries `where('agencyId').orderBy('createdAt')` exigem índice em `firestore.indexes.json`.
-7. Cliente é **obrigatório** na criação de projeto; docs antigos podem não ter `clientName`.
-8. Auth mobile retorna `null` — próximo passo P1 é `google_sign_in` em `AuthService`.
-9. Usuário **não quer publicar ainda** — dev local (`flutter run -d chrome`) é suficiente.
-10. Alterou rules/indexes? Rode `firebase deploy --only firestore`.
+1. Leia **primeiro** [`AGENTS.md`](AGENTS.md) (política: não desfazer o que já foi entregue).
+2. Depois: **`PROJECT_CONTEXT.md`** → **`TECHNICAL_DOC.md`** → **`NEXT_STEPS.md`**.
+3. Valide o ambiente: `flutter pub get`, `flutter analyze`, `flutter test`.
+4. **Não reintroduza `appflowy_board`** — Kanban custom (`kanban_column.dart` / `dashboard_board_layout.dart`).
+5. **Não crie abas ou telas separadas** para Job vs Planejamento — uma Dashboard com filtros `Exibir:`.
+6. **Títulos das colunas ficam dentro do bloco colorido** — se mexer em drag/hover, preserve isso (`AGENTS.md` D7).
+7. **Categorias de projeto** vivem em `projects` (`category`, `planningStatus`, `format`, etc.) — não usar coleção separada.
+8. Queries `where('agencyId').orderBy('createdAt')` exigem índice em `firestore.indexes.json`.
+9. Cliente é **obrigatório** na criação de projeto; docs antigos podem não ter `clientName`.
+10. Auth mobile retorna `null` — próximo passo P1 é `google_sign_in` em `AuthService`.
+11. Alterou rules/indexes? Rode `firebase deploy --only firestore`.
+12. Hosting: `.\deploy.ps1` a partir de `main` atualizado (`git pull` antes).
 
 ---
 

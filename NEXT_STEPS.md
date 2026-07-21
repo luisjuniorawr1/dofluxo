@@ -3,7 +3,7 @@
 Roadmap prático para continuidade do projeto.  
 Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TECHNICAL_DOC.md).
 
-**Última atualização:** junho/2026
+**Última atualização:** julho/2026
 
 **Legenda:**
 
@@ -65,6 +65,8 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 
 ## Decisões tomadas (para não reverter sem motivo)
 
+> **Regra:** decisões desta lista são **travadas**. Outro agente **não** desfaz ao mexer no mesmo arquivo. Detalhes e política: [`AGENTS.md`](AGENTS.md).
+
 1. **Kanban custom** em vez de `appflowy_board` — drag via `Draggable`/`LongPressDraggable` + `DragTarget`.
 2. **Uma única Dashboard** — **não** criar abas ou telas separadas Job vs Planejamento digital.
 3. **Categorias só em criar/editar** — campos de planejamento (data, formato, referência, status) não têm tela própria na navegação.
@@ -80,6 +82,9 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 13. **Mobile Kanban** — navegação explícita (chips/setas), não só swipe (conflito de gestos com listas).
 14. **Status default** ao criar: `Planejamento` (coluna Planejamento).
 15. **Mapeamento legado** de status antigos (Postagens, Criação, etc.) em `DashboardBoardMapper` — manter compatibilidade.
+16. **Títulos das colunas Kanban dentro do bloco colorido** — header + cards no mesmo container; **não** voltar título flutuando acima do fundo cinza (`kanban_column.dart`).
+17. **Update web** — banner canto inferior direito com 5 min de graça; **não** overlay fullscreen bloqueante.
+18. **Convite por código** (`DFX-XXXX-XXXX`) para entrar em agência; no 1º login o usuário pode **criar** agência **ou entrar** com código.
 
 ---
 
@@ -205,17 +210,20 @@ firebase deploy --only firestore   # se alterar rules/indexes
 
 ## Para outro agente continuar
 
-1. Leia **`PROJECT_CONTEXT.md`** (visão geral) e **`TECHNICAL_DOC.md`** (detalhes técnicos).
-2. Rode `flutter analyze` e `flutter test` para validar o ambiente.
-3. Kanban: `dashboard_workflow_board.dart`, `dashboard_board_layout.dart`, `dashboard_board_mapper.dart`, `dashboard_stages.dart`.
-4. Filtros: `dashboard_display_filter.dart` + `_showJobs` / `_showPlanning` em `dashboard_page.dart`.
-5. Categorias: `project_category.dart`, `planning_status.dart`, `new_project_dialog.dart`, `project_detail_page.dart`.
-6. **Não** reintroduza abas Job/Planejamento nem coleção `planning_posts`.
-7. **Não** reintroduza `appflowy_board` sem decisão explícita.
-8. Qualquer query `agencyId + orderBy(createdAt)` exige índice em `firestore.indexes.json`.
-9. Calendário: `sidebar_delivery_calendar.dart` — mesma stream de projetos; datas via `DateFormatUtils`.
-10. Status legados mapeados em `DashboardBoardMapper.stageIdForStatus` — preservar compatibilidade.
+1. Leia **primeiro** [`AGENTS.md`](AGENTS.md) — política: não desfazer o que já foi entregue.
+2. Depois: **`PROJECT_CONTEXT.md`** e **`TECHNICAL_DOC.md`**.
+3. Rode `flutter analyze` e `flutter test` para validar o ambiente.
+4. Kanban: `kanban_column.dart`, `dashboard_board_layout.dart`, `dashboard_board_mapper.dart`.
+5. Filtros: `dashboard_display_filter.dart` + `_showJobs` / `_showPlanning` em `dashboard_page.dart`.
+6. Categorias: `project_category.dart`, `planning_status.dart`, `new_project_dialog.dart`, `project_detail_page.dart`.
+7. **Não** reintroduza abas Job/Planejamento nem coleção `planning_posts`.
+8. **Não** reintroduza `appflowy_board` sem decisão explícita.
+9. **Não** volte títulos de coluna para fora do bloco colorido (`AGENTS.md` D7).
+10. Qualquer query `agencyId + orderBy(createdAt)` exige índice em `firestore.indexes.json`.
+11. Calendário: `sidebar_delivery_calendar.dart` — mesma stream de projetos; datas via `DateFormatUtils`.
+12. Status legados mapeados em `DashboardBoardMapper.stageIdForStatus` — preservar compatibilidade.
 
 ---
 
 *Atualizar este arquivo ao concluir tarefas ou descobrir novos bugs.*
+*Atualizar [`AGENTS.md`](AGENTS.md) ao travar uma nova decisão de produto/UI.*
