@@ -64,8 +64,8 @@ abstract final class KanbanConstants {
   static const KanbanColumnConfig postagensDoDia = KanbanColumnConfig(
     id: 'postagensDoDia',
     title: 'Postagens do dia',
-    cardColor: Color(0xFFFFEB3B),
-    cardHeaderColor: Color(0xFFF9A825),
+    cardColor: Color(0xFFFFD600),
+    cardHeaderColor: Color(0xFFF57F17),
     acceptsDragDrop: false,
     isMirror: true,
     stackFlex: stackedTopFlex,
@@ -74,8 +74,8 @@ abstract final class KanbanConstants {
   static const KanbanColumnConfig incendio = KanbanColumnConfig(
     id: 'incendio',
     title: 'Incêndio',
-    cardColor: Color(0xFFEF5350),
-    cardHeaderColor: Color(0xFFB71C1C),
+    cardColor: Color(0xFFFF5252),
+    cardHeaderColor: Color(0xFFD50000),
     acceptsDragDrop: false,
     isMirror: true,
     stackFlex: stackedBottomFlex,
@@ -84,38 +84,38 @@ abstract final class KanbanConstants {
   static const KanbanColumnConfig jobs = KanbanColumnConfig(
     id: 'jobs',
     title: 'Jobs',
-    cardColor: Color(0xFFEC407A),
-    cardHeaderColor: Color(0xFF880E4F),
+    cardColor: Color(0xFFFF4081),
+    cardHeaderColor: Color(0xFFC51162),
   );
 
   static const KanbanColumnConfig producao = KanbanColumnConfig(
     id: 'producao',
     title: 'Produção',
-    cardColor: Color(0xFFAB47BC),
-    cardHeaderColor: Color(0xFF4A148C),
+    cardColor: Color(0xFFE040FB),
+    cardHeaderColor: Color(0xFFAA00FF),
   );
 
   static const KanbanColumnConfig aprovacao = KanbanColumnConfig(
     id: 'aprovacao',
     title: 'Aprovação',
-    cardColor: Color(0xFFFF9800),
-    cardHeaderColor: Color(0xFFE65100),
+    cardColor: Color(0xFFFF9100),
+    cardHeaderColor: Color(0xFFFF6D00),
     stackFlex: stackedTopFlex,
   );
 
   static const KanbanColumnConfig concluidos = KanbanColumnConfig(
     id: 'concluidos',
     title: 'Concluídos',
-    cardColor: Color(0xFFCDDC39),
-    cardHeaderColor: Color(0xFF33691E),
+    cardColor: Color(0xFFC6FF00),
+    cardHeaderColor: Color(0xFF64DD17),
     stackFlex: stackedBottomFlex,
   );
 
   static const KanbanColumnConfig statusPlanejamento = KanbanColumnConfig(
     id: 'statusPlanejamento',
     title: 'Status do Planejamento',
-    cardColor: Color(0xFF4FC3F7),
-    cardHeaderColor: Color(0xFF0277BD),
+    cardColor: Color(0xFF40C4FF),
+    cardHeaderColor: Color(0xFF0091EA),
     acceptsDragDrop: false,
   );
 
