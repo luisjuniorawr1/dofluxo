@@ -139,14 +139,14 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
       fullColumn: fullColumn,
       draggedProjectId: item.id,
       visibleDropIndex: visibleDropIndex,
-      visibleDragIndex: visibleDragIndex,
     );
 
     final sourceZone = KanbanConstants.findById(dragData.fromColumnId)?.zoneId;
     if (sourceZone == zone) {
       final fromFullIndex = fullColumn.indexWhere((entry) => entry.id == item.id);
-      if (fromFullIndex >= 0 &&
-          (realIndex == fromFullIndex || realIndex == fromFullIndex + 1)) {
+      // Insert index is in the list WITHOUT the dragged item. Same place =
+      // fromFullIndex only (fromFullIndex+1 is a real one-step move down).
+      if (fromFullIndex >= 0 && realIndex == fromFullIndex) {
         return;
       }
     }
@@ -157,7 +157,13 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
       draggedProjectId: item.id,
     );
 
-    _applyOptimisticMove(item, targetColumnId, visibleDropIndex);
+    // Optimistic UI uses the visible list; convert insert-before (with item)
+    // to insert index after removal.
+    var optimisticIndex = visibleDropIndex;
+    if (visibleDragIndex != null && visibleDropIndex > visibleDragIndex) {
+      optimisticIndex = visibleDropIndex - 1;
+    }
+    _applyOptimisticMove(item, targetColumnId, optimisticIndex);
     _onDragEnded();
 
     _movingProjectIds.add(item.id);

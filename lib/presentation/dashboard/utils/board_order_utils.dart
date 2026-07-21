@@ -7,12 +7,14 @@ class BoardOrderUtils {
   static const _step = 1024.0;
 
   /// Converte índice visível do drop para índice real na coluna completa.
+  ///
+  /// [visibleDropIndex] = insert-before na lista visível (ainda com o card
+  /// arrastado). O retorno é insert-before em [fullColumn] sem o arrastado.
   static int resolveKanbanTargetIndex({
     required List<ProjectBoardItem> visibleColumn,
     required List<ProjectBoardItem> fullColumn,
     required String draggedProjectId,
     required int visibleDropIndex,
-    int? visibleDragIndex,
   }) {
     final fullWithoutDragged =
         fullColumn.where((item) => item.id != draggedProjectId).toList();
@@ -25,12 +27,6 @@ class BoardOrderUtils {
     final anchorFullIndex =
         fullWithoutDragged.indexWhere((item) => item.id == anchor.id);
     if (anchorFullIndex < 0) return fullWithoutDragged.length;
-
-    if (visibleDragIndex != null &&
-        visibleDragIndex >= 0 &&
-        visibleDragIndex < visibleDropIndex) {
-      return anchorFullIndex + 1;
-    }
 
     return anchorFullIndex;
   }

@@ -102,16 +102,32 @@ void main() {
       expect(index, 2);
     });
 
-    test('resolveKanbanTargetIndex adds one when dragging down same column', () {
+    test('resolveKanbanTargetIndex insert-before when dragging down', () {
       final visible = [item('a'), item('b'), item('c')];
       final full = [item('a'), item('b'), item('c')];
 
+      // Drop on c (index 2) while dragging a → insert before c in [b,c] = 1
+      // ([b, a, c] — one step down).
       final index = BoardOrderUtils.resolveKanbanTargetIndex(
         visibleColumn: visible,
         fullColumn: full,
         draggedProjectId: 'a',
         visibleDropIndex: 2,
-        visibleDragIndex: 0,
+      );
+
+      expect(index, 1);
+    });
+
+    test('resolveKanbanTargetIndex append when dropping past last card', () {
+      final visible = [item('a'), item('b'), item('c')];
+      final full = [item('a'), item('b'), item('c')];
+
+      // Drag b to end slot (index 3) → [a, c, b].
+      final index = BoardOrderUtils.resolveKanbanTargetIndex(
+        visibleColumn: visible,
+        fullColumn: full,
+        draggedProjectId: 'b',
+        visibleDropIndex: 3,
       );
 
       expect(index, 2);
