@@ -207,7 +207,7 @@ class AccountPage extends StatelessWidget {
                         Icon(
                           Icons.storefront_outlined,
                           size: 40,
-                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(height: 12),
                         Text(

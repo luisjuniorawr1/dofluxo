@@ -67,26 +67,35 @@ class ThemeUtils {
     );
   }
 
+  /// Tag preenchida com a cor de destaque (sempre “aparece” no card).
+  ///
+  /// Use para badges de marca/papel em qualquer página (claro/escuro).
+  static ({Color background, Color foreground}) filledBadgeColors(Color accent) {
+    return (background: accent, foreground: getContrastColor(accent));
+  }
+
   /// Fundo + texto de badge tingido pela cor de destaque, com contraste ≥ 4.5.
   ///
-  /// Usa mistura forte com a superfície para o chip não “sumir” no card
-  /// (problema comum com amarelo/ouro em alpha baixo no dark).
+  /// Garante também contraste mínimo do chip contra a superfície do card,
+  /// para não virar “cinza fantasma” no dark (ou lavado no light).
   static ({Color background, Color foreground}) tintedBadgeColors({
     required Color accent,
     required Color surface,
     required Brightness brightness,
     double minRatio = 4.5,
+    double minSurfaceContrast = 1.45,
   }) {
-    // Dark: mistura bem alta — tint fraco vira “cinza fantasma” no card.
-    final mix = brightness == Brightness.dark ? 0.88 : 0.72;
-    final background = Color.lerp(surface, accent, mix)!;
-    final foreground = getContrastColor(background);
-    // Se ainda falhar (cor intermediária), força preto/branco pelo fallback.
+    var mix = brightness == Brightness.dark ? 0.88 : 0.72;
+    var background = Color.lerp(surface, accent, mix)!;
+
+    while (contrastRatio(background, surface) < minSurfaceContrast && mix < 1.0) {
+      mix = (mix + 0.06).clamp(0.0, 1.0);
+      background = Color.lerp(surface, accent, mix)!;
+    }
+
+    var foreground = getContrastColor(background);
     if (contrastRatio(foreground, background) < minRatio) {
-      return (
-        background: background,
-        foreground: background.computeLuminance() > 0.35 ? Colors.black : Colors.white,
-      );
+      foreground = background.computeLuminance() > 0.35 ? Colors.black : Colors.white;
     }
     return (background: background, foreground: foreground);
   }

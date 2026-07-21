@@ -49,6 +49,7 @@ class TeamMemberTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final joinedLabel = _joinedLabel;
+    final youBadge = ThemeUtils.filledBadgeColors(scheme.primary);
 
     return Material(
       color: isCurrentUser
@@ -90,20 +91,19 @@ class TeamMemberTile extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            // Primary sólido: a tag precisa “aparecer” no card escuro.
-                            color: scheme.primary,
+                            color: youBadge.background,
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
                               color: Color.alphaBlend(
-                                scheme.onPrimary.withValues(alpha: 0.28),
-                                scheme.primary,
+                                youBadge.foreground.withValues(alpha: 0.28),
+                                youBadge.background,
                               ),
                             ),
                           ),
                           child: Text(
                             'Você',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: scheme.onPrimary,
+                              color: youBadge.foreground,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

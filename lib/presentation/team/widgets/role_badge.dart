@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
+import '../../../core/utils/theme_utils.dart';
 
 class RoleBadge extends StatelessWidget {
   const RoleBadge({super.key, required this.role});
@@ -12,12 +13,12 @@ class RoleBadge extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    // Dono usa primary sólido — tint fraco some no card escuro.
+    // Dono: primary sólido (helper global). Demais: containers do ColorScheme.
     final (background, foreground) = switch (role) {
-      AgencyRole.owner => (
-          scheme.primary,
-          scheme.onPrimary,
-        ),
+      AgencyRole.owner => () {
+          final filled = ThemeUtils.filledBadgeColors(scheme.primary);
+          return (filled.background, filled.foreground);
+        }(),
       AgencyRole.admin => (
           scheme.secondaryContainer,
           scheme.onSecondaryContainer,

@@ -62,7 +62,7 @@ void main() {
       // Fundo do chip deve se afastar da superfície do card.
       expect(
         ThemeUtils.contrastRatio(badge.background, darkSurface),
-        greaterThan(1.2),
+        greaterThanOrEqualTo(1.45),
       );
     });
 
@@ -79,6 +79,33 @@ void main() {
       expect(
         ThemeUtils.contrastRatio(badge.foreground, badge.background),
         greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('filledBadgeColors uses solid accent with contrast text', () {
+      const gold = Color(0xFFF5C800);
+      final badge = ThemeUtils.filledBadgeColors(gold);
+
+      expect(badge.background, gold);
+      expect(
+        ThemeUtils.contrastRatio(badge.foreground, badge.background),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('tintedBadgeColors lifts grey accent off dark card', () {
+      const grey = Color(0xFF9E9E9E);
+      const darkSurface = Color(0xFF1C1C1C);
+
+      final badge = ThemeUtils.tintedBadgeColors(
+        accent: grey,
+        surface: darkSurface,
+        brightness: Brightness.dark,
+      );
+
+      expect(
+        ThemeUtils.contrastRatio(badge.background, darkSurface),
+        greaterThanOrEqualTo(1.45),
       );
     });
   });
