@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/agency_role.dart';
-import '../../../core/utils/theme_utils.dart';
 
 class RoleBadge extends StatelessWidget {
   const RoleBadge({super.key, required this.role});
