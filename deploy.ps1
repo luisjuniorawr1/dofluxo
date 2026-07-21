@@ -17,6 +17,48 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
+function Invoke-Firebase {
+    param([string[]]$Arguments)
+
+    if (Get-Command firebase -ErrorAction SilentlyContinue) {
+        & firebase @Arguments
+    } else {
+        Write-Host "   ('firebase' nao encontrado no PATH; usando 'npx firebase-tools')" -ForegroundColor DarkGray
+        & npx firebase-tools @Arguments
+    }
+}
+
+function Assert-FirebaseLogin {
+    Write-Host ""
+    Write-Host ">> Verificando login Firebase..." -ForegroundColor Cyan
+
+    $loginList = Invoke-Firebase @("login:list") 2>&1 | Out-String
+    Write-Host $loginList
+
+    if ($loginList -notmatch '@') {
+        Write-Host ""
+        Write-Host "Voce nao esta autenticado no Firebase CLI." -ForegroundColor Red
+        Write-Host "Rode no PowerShell:" -ForegroundColor Yellow
+        Write-Host "  firebase login --reauth" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Use a conta Google que tem acesso ao projeto dofluxo-organizer." -ForegroundColor Yellow
+        exit 1
+    }
+
+    Write-Host ">> Confirmando acesso ao projeto dofluxo-organizer..." -ForegroundColor Cyan
+    $projects = Invoke-Firebase @("projects:list") 2>&1 | Out-String
+    if ($projects -notmatch 'dofluxo-organizer') {
+        Write-Host ""
+        Write-Host "A conta logada nao tem acesso ao projeto dofluxo-organizer." -ForegroundColor Red
+        Write-Host "Rode:" -ForegroundColor Yellow
+        Write-Host "  firebase login --reauth" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Projetos visiveis para esta conta:" -ForegroundColor DarkGray
+        Write-Host $projects
+        exit 1
+    }
+}
+
 function Assert-LastExit([string]$step) {
     if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
         Write-Host "ERRO em: $step" -ForegroundColor Red
@@ -110,15 +152,11 @@ flutter build web `
 Assert-LastExit "flutter build web"
 
 # --- 6) firebase deploy ------------------------------------------------------
+Assert-FirebaseLogin
+
 Write-Host ""
 Write-Host ">> firebase deploy --only firestore:rules,hosting" -ForegroundColor Cyan
-$deployArgs = @("deploy", "--only", "firestore:rules,hosting", "--project", "dofluxo-organizer")
-if (Get-Command firebase -ErrorAction SilentlyContinue) {
-    firebase @deployArgs
-} else {
-    Write-Host "   usando npx firebase-tools" -ForegroundColor DarkGray
-    npx firebase-tools @deployArgs
-}
+Invoke-Firebase @("deploy", "--only", "firestore:rules,hosting")
 Assert-LastExit "firebase deploy"
 
 # --- 7) commit + push da versao ----------------------------------------------
