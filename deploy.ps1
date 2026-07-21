@@ -100,6 +100,23 @@ Write-Host ""
 
 Ensure-GitIdentity
 
+# Merge incompleto bloqueia pull/deploy.
+$gitDir = Join-Path $PSScriptRoot ".git"
+if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
+    Write-Host ""
+    Write-Host "ERRO: existe um merge Git incompleto neste repositorio." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Para cancelar o merge e continuar o deploy:" -ForegroundColor Yellow
+    Write-Host "  git merge --abort" -ForegroundColor Yellow
+    Write-Host "  git pull origin main" -ForegroundColor Yellow
+    Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Se voce estava fazendo merge de proposito, conclua antes:" -ForegroundColor DarkGray
+    Write-Host "  git status" -ForegroundColor DarkGray
+    Write-Host "  git commit" -ForegroundColor DarkGray
+    exit 1
+}
+
 # Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
 $pubspecDirty = git status --porcelain -- pubspec.yaml 2>$null
 if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
