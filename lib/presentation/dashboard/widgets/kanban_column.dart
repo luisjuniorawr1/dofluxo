@@ -83,7 +83,20 @@ class KanbanColumn<T> extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: _ColumnHeader(column: column, itemCount: items.length),
+              child: effectiveMove == null
+                  ? _ColumnHeader(column: column, itemCount: items.length)
+                  : _DropTargetShell<T>(
+                      columnId: column.id,
+                      columnItems: items,
+                      itemId: itemId,
+                      dropIndex: 0,
+                      highlightColor: column.cardHeaderColor,
+                      onMove: effectiveMove,
+                      child: _ColumnHeader(
+                        column: column,
+                        itemCount: items.length,
+                      ),
+                    ),
             ),
             const SizedBox(height: KanbanConstants.headerListGap),
             Expanded(
@@ -258,7 +271,7 @@ class _ColumnHeader extends StatelessWidget {
               child: Text(
                 column.title,
                 style: ThemeUtils.sectionTitle(context).copyWith(
-                  color: KanbanConstants.columnHeaderAccent(column),
+                  color: KanbanConstants.onCardColor(column.cardColor),
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -319,6 +332,7 @@ class _DropTargetShell<T> extends StatelessWidget {
     required this.child,
     this.expand = false,
     this.onMove,
+    this.highlightColor,
   });
 
   final String columnId;
@@ -328,6 +342,7 @@ class _DropTargetShell<T> extends StatelessWidget {
   final Widget child;
   final bool expand;
   final KanbanMoveCallback<T>? onMove;
+  final Color? highlightColor;
 
   bool _canAccept(KanbanDragData<T> data) {
     if (onMove == null) return false;
@@ -357,11 +372,29 @@ class _DropTargetShell<T> extends StatelessWidget {
       onWillAcceptWithDetails: (details) => _canAccept(details.data),
       onAcceptWithDetails: (details) => _handleAccept(details.data),
       builder: (context, candidateData, rejectedData) {
-        // Sem highlight visual de drop (borda/fundo na coluna).
+        final isHighlighted =
+            highlightColor != null && candidateData.isNotEmpty;
+
+        final content = isHighlighted
+            ? AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                decoration: BoxDecoration(
+                  color: highlightColor!.withValues(alpha: 0.14),
+                  border: Border.all(
+                    color: highlightColor!.withValues(alpha: 0.85),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: child,
+              )
+            : child;
+
         if (expand) {
-          return SizedBox.expand(child: child);
+          return SizedBox.expand(child: content);
         }
-        return child;
+        return content;
       },
     );
   }
