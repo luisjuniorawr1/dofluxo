@@ -67,11 +67,35 @@ function Assert-LastExit([string]$step) {
     }
 }
 
+function Ensure-GitIdentity {
+    $email = git config user.email
+    $name = git config user.name
+
+    if ($email -and $name) { return }
+
+    Write-Host ">> Configurando identidade Git deste repositorio..." -ForegroundColor Yellow
+
+    if (-not $email) {
+        git config user.email "dofluxodigital@gmail.com"
+        Assert-LastExit "git config user.email"
+    }
+
+    if (-not $name) {
+        git config user.name "DOFLUXO"
+        Assert-LastExit "git config user.name"
+    }
+
+    Write-Host "   user.email = $(git config user.email)" -ForegroundColor DarkGray
+    Write-Host "   user.name  = $(git config user.name)" -ForegroundColor DarkGray
+}
+
 Write-Host ""
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host " DOFLUXO - publicar (tudo em um comando)" -ForegroundColor Cyan
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host ""
+
+Ensure-GitIdentity
 
 # Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
 $pubspecDirty = git status --porcelain -- pubspec.yaml 2>$null
