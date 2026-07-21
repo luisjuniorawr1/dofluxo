@@ -30,13 +30,28 @@ Write-Host " DOFLUXO - publicar (tudo em um comando)" -ForegroundColor Cyan
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
+$pubspecDirty = git status --porcelain -- pubspec.yaml 2>$null
+if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
+    Write-Host ">> pubspec.yaml alterado localmente (deploy anterior?) — restaurando" -ForegroundColor Yellow
+    git checkout -- pubspec.yaml
+    Assert-LastExit "git checkout pubspec.yaml"
+}
+
 # --- 1) Atualizar do GitHub --------------------------------------------------
 Write-Host ">> git pull" -ForegroundColor Cyan
 git pull --ff-only
 if ($LASTEXITCODE -ne 0) {
     Write-Host "   ff-only falhou; tentando git pull normal..." -ForegroundColor DarkGray
     git pull
-    Assert-LastExit "git pull"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "ERRO no git pull. Se houver arquivos locais bloqueando:" -ForegroundColor Red
+        Write-Host "  git stash push -m pre-deploy" -ForegroundColor Yellow
+        Write-Host "  git pull origin main" -ForegroundColor Yellow
+        Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
+        exit $LASTEXITCODE
+    }
 }
 
 # --- 2) Commit automatico de mudancas locais (se houver) ---------------------
