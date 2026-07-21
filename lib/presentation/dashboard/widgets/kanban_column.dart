@@ -144,9 +144,11 @@ class KanbanColumn<T> extends StatelessWidget {
 
     return CustomScrollView(
       primary: false,
-      physics: isMobileCarousel
-          ? const BouncingScrollPhysics()
-          : const ClampingScrollPhysics(),
+      physics: isDragging
+          ? const NeverScrollableScrollPhysics()
+          : isMobileCarousel
+              ? const BouncingScrollPhysics()
+              : const ClampingScrollPhysics(),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -162,15 +164,6 @@ class KanbanColumn<T> extends StatelessWidget {
                 final id = itemId(item);
                 final isBeingDragged = draggingId == id;
 
-                // Hide only in non-mirror columns that don't own the drag.
-                // Mirror zones (Incêndios / Postagens) keep the same itemId
-                // visible while the workflow card is dragged.
-                if (isBeingDragged &&
-                    effectiveMove == null &&
-                    !column.isMirror) {
-                  return const SizedBox.shrink();
-                }
-
                 final card = Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: KanbanConstants.cardVerticalGap / 2,
@@ -179,6 +172,7 @@ class KanbanColumn<T> extends StatelessWidget {
                     ignoring: isDragging && !isBeingDragged,
                     child: RepaintBoundary(
                       child: KanbanCard<T>(
+                        key: ValueKey<String>('kanban-card-$id'),
                         item: item,
                         dragData: KanbanDragData<T>(
                           item: item,
@@ -205,7 +199,9 @@ class KanbanColumn<T> extends StatelessWidget {
                   ),
                 );
 
-                if (effectiveMove == null || isBeingDragged) return card;
+                // Keep DropTargetShell mounted while dragging so the parent of
+                // Draggable does not change mid-gesture (kills intermittent drags).
+                if (effectiveMove == null) return card;
 
                 return _DropTargetShell<T>(
                   columnId: column.id,

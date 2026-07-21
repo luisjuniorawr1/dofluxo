@@ -51,7 +51,11 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
 
   void _handleDragStarted() {
     setState(() => _isDragging = true);
-    widget.onDragStarted?.call();
+    // Defer parent rebuild (draggingItemId) until the drag gesture is stable.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isDragging) return;
+      widget.onDragStarted?.call();
+    });
   }
 
   void _handleDragEnd(DraggableDetails details) {
@@ -94,7 +98,7 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
   Widget _buildPlaceholder() {
     return IgnorePointer(
       child: Opacity(
-        opacity: 0.3,
+        opacity: 0.55,
         child: widget.buildContent(isDragging: false, isPlaceholder: true),
       ),
     );
@@ -102,11 +106,18 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final tappable = GestureDetector(
-      onTap: widget.onTap == null ? null : _handleTap,
-      behavior: HitTestBehavior.opaque,
-      child: widget.buildContent(isDragging: _isDragging, isPlaceholder: false),
+    final content = widget.buildContent(
+      isDragging: _isDragging,
+      isPlaceholder: false,
     );
+
+    final tappable = widget.onTap == null
+        ? content
+        : GestureDetector(
+            onTap: _handleTap,
+            behavior: HitTestBehavior.opaque,
+            child: content,
+          );
 
     if (!widget.enableDrag) return tappable;
 
@@ -122,7 +133,7 @@ class _KanbanCardState<T> extends State<KanbanCard<T>> {
         feedback: _buildFeedback(context),
         childWhenDragging: _buildPlaceholder(),
         maxSimultaneousDrags: 1,
-        delay: const Duration(milliseconds: 120),
+        delay: const Duration(milliseconds: 180),
         hapticFeedbackOnStart: false,
         onDragStarted: _handleDragStarted,
         onDragEnd: _handleDragEnd,
