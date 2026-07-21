@@ -31,6 +31,38 @@ bool isUpdateRequired({
   return sessionVersion.trim() != remoteVersion.trim();
 }
 
+/// Período de graça antes da atualização automática (web).
+const Duration kUpdateGracePeriod = Duration(minutes: 5);
+
+/// Tempo restante até a atualização automática.
+Duration remainingGracePeriod({
+  required DateTime detectedAt,
+  required DateTime now,
+  Duration gracePeriod = kUpdateGracePeriod,
+}) {
+  final elapsed = now.difference(detectedAt);
+  final remaining = gracePeriod - elapsed;
+  if (remaining.isNegative) return Duration.zero;
+  return remaining;
+}
+
+/// Verdadeiro quando o período de graça expirou e a atualização deve ocorrer.
+bool shouldAutoReload({
+  required DateTime detectedAt,
+  required DateTime now,
+  Duration gracePeriod = kUpdateGracePeriod,
+}) {
+  return remainingGracePeriod(
+        detectedAt: detectedAt,
+        now: now,
+        gracePeriod: gracePeriod,
+      ) ==
+      Duration.zero;
+}
+
+/// Formata contagem regressiva como `M:SS` (ex.: `4:32`).
+String formatGraceCountdown(Duration remaining) => formatCountdown(remaining);
+
 /// Formata um [Duration] restante como `M:SS` (ex.: `4:59`, `0:05`).
 String formatCountdown(Duration remaining) {
   final totalSeconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;

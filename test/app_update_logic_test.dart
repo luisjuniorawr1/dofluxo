@@ -60,4 +60,32 @@ void main() {
       expect(formatCountdown(Duration.zero), '0:00');
     });
   });
+
+  group('grace period', () {
+    final detectedAt = DateTime(2026, 7, 21, 12, 0, 0);
+
+    test('remainingGracePeriod diminui com o tempo', () {
+      expect(
+        remainingGracePeriod(
+          detectedAt: detectedAt,
+          now: detectedAt.add(const Duration(minutes: 2)),
+        ),
+        const Duration(minutes: 3),
+      );
+    });
+
+    test('shouldAutoReload após 5 minutos', () {
+      expect(
+        shouldAutoReload(
+          detectedAt: detectedAt,
+          now: detectedAt.add(const Duration(minutes: 5)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('formatGraceCountdown delega para formatCountdown', () {
+      expect(formatGraceCountdown(const Duration(minutes: 4, seconds: 32)), '4:32');
+    });
+  });
 }
