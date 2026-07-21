@@ -154,7 +154,11 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 | 10 | README de setup para novos devs | Baixo |
 | 11 | CI: `flutter analyze` + `flutter test` | Baixo |
 
-> **Deploy web:** `.\deploy.ps1` na raiz. Incrementa a versão, builda e publica. O bump dispara o aviso nos clientes com o app aberto.
+> **Deploy web (comando único):**
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+> ```
+> Faz: `git pull` → commit local (se houver) → bump de versão → build → Firebase Hosting → `git push` da versão.
 
 ### Sprint 4 — Produto 🟢
 
