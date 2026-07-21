@@ -8,4 +8,7 @@ abstract final class DashboardLayoutBreakpoints {
 
   /// Espaço entre colunas no carrossel mobile.
   static const double mobileColumnSpacing = 10;
+
+  /// Espaço entre colunas no Kanban desktop.
+  static const double desktopColumnSpacing = 12;
 }

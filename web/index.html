@@ -1,39 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR" style="background:#121212;">
 <head>
 <meta name="google-signin-client_id" content="1042664146461-i3n8k4a4on7g0afdrurtd3dsb4s1pfss.apps.googleusercontent.com">
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="DOFLUXO — organizador de fluxo para agências criativas.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#121212">
+  <meta name="color-scheme" content="dark">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="dofluxo">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>dofluxo</title>
   <link rel="manifest" href="manifest.json">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #0D0D0D 0%, #121212 100%);
+      color-scheme: dark;
+      overflow: hidden;
+    }
+
+    #dofluxo-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: linear-gradient(180deg, #0D0D0D 0%, #121212 100%);
+      font-family: system-ui, -apple-system, sans-serif;
+      box-sizing: border-box;
+    }
+
+    #dofluxo-splash .inner {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    #dofluxo-splash .message-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 52px;
+      margin-bottom: 24px;
+    }
+
+    #dofluxo-splash .splash-icon {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 32px;
+      line-height: 1;
+      width: 36px;
+      text-align: center;
+      color: #FFFFFF;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      animation: dofluxo-pulse 1.4s ease-in-out infinite;
+      user-select: none;
+    }
+
+    #dofluxo-splash .text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #EAEAEA;
+      text-align: left;
+    }
+
+    #dofluxo-splash .bar-track {
+      height: 4px;
+      border-radius: 999px;
+      background: #383838;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #dofluxo-splash .bar-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 38%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.15), #FFFFFF, rgba(255,255,255,0.15));
+      animation: dofluxo-bar 2.2s ease-in-out infinite;
+    }
+
+    @keyframes dofluxo-pulse {
+      0%, 100% { transform: scale(0.88); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes dofluxo-bar {
+      0% { left: -38%; }
+      100% { left: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      #dofluxo-splash .splash-icon { font-size: 28px; width: 32px; }
+      #dofluxo-splash .text { font-size: 15px; }
+    }
+  </style>
+
+  <script>
+    (function () {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) { caches.delete(k); });
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
+  <div id="dofluxo-splash" aria-live="polite" aria-busy="true">
+    <div class="inner">
+      <div class="message-row">
+        <span class="splash-icon" id="splash-icon" aria-hidden="true">groups</span>
+        <span class="text" id="splash-text">Reunindo a equipe...</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill"></div></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var messages = [
+        ['groups', 'Reunindo a equipe...'],
+        ['assignment', 'Organizando os briefings...'],
+        ['palette', 'Preparando a mesa criativa...'],
+        ['rocket_launch', 'Colocando os projetos em movimento...'],
+        ['inventory_2', 'Conferindo as próximas entregas...'],
+        ['waves', 'Organizando o fluxo da agência...']
+      ];
+      var index = 0;
+      var iconEl = document.getElementById('splash-icon');
+      var textEl = document.getElementById('splash-text');
+
+      setInterval(function () {
+        index = (index + 1) % messages.length;
+        if (iconEl) iconEl.textContent = messages[index][0];
+        if (textEl) textEl.textContent = messages[index][1];
+      }, 1750);
+
+      function hideSplash() {
+        var splash = document.getElementById('dofluxo-splash');
+        if (!splash) return;
+        splash.style.opacity = '0';
+        splash.style.transition = 'opacity 0.35s ease';
+        setTimeout(function () { splash.remove(); }, 350);
+      }
+
+      window.addEventListener('flutter-first-frame', hideSplash);
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

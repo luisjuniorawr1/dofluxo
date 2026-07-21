@@ -6,22 +6,23 @@ import '../config/dashboard_layout_breakpoints.dart';
 import '../config/dashboard_stages.dart';
 import '../models/project_board_item.dart';
 import 'dashboard_workflow_board.dart';
-import 'project_status_panel.dart';
 
-/// Layout responsivo do quadro: colunas flexíveis no desktop e carrossel no mobile.
+/// Layout responsivo do Kanban: 5 colunas no desktop e carrossel no mobile.
 class DashboardBoardLayout extends StatefulWidget {
   const DashboardBoardLayout({
     super.key,
     required this.itemsByStage,
-    required this.statusProjects,
     this.onProjectMove,
     this.onProjectTap,
+    this.onProjectDragStarted,
+    this.onProjectDragEnded,
   });
 
   final Map<String, List<ProjectBoardItem>> itemsByStage;
-  final List<ProjectBoardItem> statusProjects;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
+  final ProjectDragStartedCallback? onProjectDragStarted;
+  final ProjectDragStartedCallback? onProjectDragEnded;
 
   @override
   State<DashboardBoardLayout> createState() => _DashboardBoardLayoutState();
@@ -29,10 +30,11 @@ class DashboardBoardLayout extends StatefulWidget {
 
 class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   late final PageController _pageController;
+  final ValueNotifier<String?> _draggingProjectId = ValueNotifier(null);
+  final ValueNotifier<bool> _isDragging = ValueNotifier(false);
   int _currentPage = 0;
-  bool _isDragging = false;
 
-  static const _mobilePageCount = 7;
+  static const _mobilePageCount = 5;
 
   @override
   void initState() {
@@ -42,11 +44,23 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
     );
   }
 
-  void _onDragStarted() => setState(() => _isDragging = true);
+  void _onDragStarted(String projectId) {
+    _draggingProjectId.value = projectId;
+    _isDragging.value = true;
+    widget.onProjectDragStarted?.call(projectId);
+  }
 
   void _onDragEnded() {
-    if (!mounted) return;
-    setState(() => _isDragging = false);
+    final projectId = _draggingProjectId.value;
+    if (projectId != null) {
+      widget.onProjectDragEnded?.call(projectId);
+    }
+    // Libera o board no próximo frame (aceita o drop antes, sem travar).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _draggingProjectId.value = null;
+      _isDragging.value = false;
+    });
   }
 
   void _goToPage(int index) {
@@ -65,6 +79,8 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   @override
   void dispose() {
     _pageController.dispose();
+    _draggingProjectId.dispose();
+    _isDragging.dispose();
     super.dispose();
   }
 
@@ -72,19 +88,20 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
+        final isMobile =
+            constraints.maxWidth < DashboardLayoutBreakpoints.mobileCarousel;
 
         if (isMobile) {
           return _MobileCarousel(
             pageController: _pageController,
             currentPage: _currentPage,
             isDragging: _isDragging,
+            draggingProjectId: _draggingProjectId,
             onPageChanged: (index) => setState(() => _currentPage = index),
             onGoToPage: _goToPage,
             onPreviousPage: _goToPreviousPage,
             onNextPage: _goToNextPage,
             itemsByStage: widget.itemsByStage,
-            statusProjects: widget.statusProjects,
             onProjectMove: widget.onProjectMove,
             onProjectTap: widget.onProjectTap,
             onDragStarted: _onDragStarted,
@@ -94,7 +111,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
 
         return _DesktopBoard(
           itemsByStage: widget.itemsByStage,
-          statusProjects: widget.statusProjects,
+          draggingProjectId: _draggingProjectId,
           onProjectMove: widget.onProjectMove,
           onProjectTap: widget.onProjectTap,
           onDragStarted: _onDragStarted,
@@ -108,7 +125,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
 class _DesktopBoard extends StatelessWidget {
   const _DesktopBoard({
     required this.itemsByStage,
-    required this.statusProjects,
+    required this.draggingProjectId,
     this.onProjectMove,
     this.onProjectTap,
     this.onDragStarted,
@@ -116,54 +133,34 @@ class _DesktopBoard extends StatelessWidget {
   });
 
   final Map<String, List<ProjectBoardItem>> itemsByStage;
-  final List<ProjectBoardItem> statusProjects;
+  final ValueNotifier<String?> draggingProjectId;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
 
   @override
   Widget build(BuildContext context) {
-    final criacao = DashboardStage.find(DashboardStageId.criacao)!;
-    final incendios = DashboardStage.find(DashboardStageId.incendios)!;
+    final stages = DashboardStage.workflow;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final stage in DashboardStage.workflow)
-          if (stage.id == DashboardStageId.incendios)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: WorkflowCriacaoIncendiosColumn(
-                  criacaoStage: criacao,
-                  incendiosStage: incendios,
-                  criacaoItems: itemsByStage[criacao.storageKey] ?? const [],
-                  incendiosItems: itemsByStage[incendios.storageKey] ?? const [],
-                  onProjectMove: onProjectMove,
-                  onProjectTap: onProjectTap,
-                  onDragStarted: onDragStarted,
-                  onDragEnded: onDragEnded,
-                ),
-              ),
-            )
-          else if (stage.id != DashboardStageId.criacao)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: WorkflowColumn(
-                  stage: stage,
-                  items: itemsByStage[stage.storageKey] ?? const [],
-                  onProjectMove: onProjectMove,
-                  onProjectTap: onProjectTap,
-                  onDragStarted: onDragStarted,
-                  onDragEnded: onDragEnded,
-                ),
-              ),
+        for (var i = 0; i < stages.length; i++) ...[
+          if (i > 0)
+            const SizedBox(width: DashboardLayoutBreakpoints.desktopColumnSpacing),
+          Expanded(
+            child: WorkflowColumn(
+              stage: stages[i],
+              items: itemsByStage[stages[i].storageKey] ?? const [],
+              draggingProjectId: draggingProjectId,
+              onProjectMove: onProjectMove,
+              onProjectTap: onProjectTap,
+              onDragStarted: onDragStarted,
+              onDragEnded: onDragEnded,
             ),
-        Expanded(
-          child: ProjectStatusPanel(projects: statusProjects),
-        ),
+          ),
+        ],
       ],
     );
   }
@@ -174,12 +171,12 @@ class _MobileCarousel extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.isDragging,
+    required this.draggingProjectId,
     required this.onPageChanged,
     required this.onGoToPage,
     required this.onPreviousPage,
     required this.onNextPage,
     required this.itemsByStage,
-    required this.statusProjects,
     this.onProjectMove,
     this.onProjectTap,
     this.onDragStarted,
@@ -188,108 +185,47 @@ class _MobileCarousel extends StatelessWidget {
 
   final PageController pageController;
   final int currentPage;
-  final bool isDragging;
+  final ValueNotifier<bool> isDragging;
+  final ValueNotifier<String?> draggingProjectId;
   final ValueChanged<int> onPageChanged;
   final ValueChanged<int> onGoToPage;
   final VoidCallback onPreviousPage;
   final VoidCallback onNextPage;
   final Map<String, List<ProjectBoardItem>> itemsByStage;
-  final List<ProjectBoardItem> statusProjects;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
-
-  static const _pageTitles = [
-    'Postagens do dia',
-    'Criação',
-    'Incêndios',
-    'Captação',
-    'Edição',
-    'Aprovação',
-    'Status do Projeto',
-  ];
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
 
   static const _chipLabels = [
-    'Postagens',
-    'Criação',
     'Incêndios',
-    'Captação',
-    'Edição',
+    'Planejamento',
+    'Produção',
     'Aprovação',
-    'Status',
+    'Concluído',
   ];
 
   @override
   Widget build(BuildContext context) {
-    final criacao = DashboardStage.find(DashboardStageId.criacao)!;
-    final incendios = DashboardStage.find(DashboardStageId.incendios)!;
-    final postagens = DashboardStage.find(DashboardStageId.postagensDoDia)!;
-    final captacao = DashboardStage.find(DashboardStageId.captacao)!;
-    final edicao = DashboardStage.find(DashboardStageId.edicao)!;
-    final aprovacao = DashboardStage.find(DashboardStageId.aprovacao)!;
-
-    final pages = <Widget>[
-      WorkflowColumn(
-        stage: postagens,
-        items: itemsByStage[postagens.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      WorkflowColumn(
-        stage: criacao,
-        items: itemsByStage[criacao.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      WorkflowColumn(
-        stage: incendios,
-        items: itemsByStage[incendios.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      WorkflowColumn(
-        stage: captacao,
-        items: itemsByStage[captacao.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      WorkflowColumn(
-        stage: edicao,
-        items: itemsByStage[edicao.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      WorkflowColumn(
-        stage: aprovacao,
-        items: itemsByStage[aprovacao.storageKey] ?? const [],
-        onProjectMove: onProjectMove,
-        onProjectTap: onProjectTap,
-        onDragStarted: onDragStarted,
-        onDragEnded: onDragEnded,
-        isMobileCarousel: true,
-      ),
-      ProjectStatusPanel(projects: statusProjects),
-    ];
+    final pages = DashboardStage.workflow
+        .map(
+          (stage) => WorkflowColumn(
+            stage: stage,
+            items: itemsByStage[stage.storageKey] ?? const [],
+            draggingProjectId: draggingProjectId,
+            onProjectMove: onProjectMove,
+            onProjectTap: onProjectTap,
+            onDragStarted: onDragStarted,
+            onDragEnded: onDragEnded,
+            isMobileCarousel: true,
+          ),
+        )
+        .toList();
 
     final theme = Theme.of(context);
     final canGoBack = currentPage > 0;
     final canGoForward = currentPage < pages.length - 1;
+    final currentTitle = DashboardStage.workflow[currentPage].title;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -303,7 +239,7 @@ class _MobileCarousel extends StatelessWidget {
             ),
             Expanded(
               child: Text(
-                _pageTitles[currentPage],
+                currentTitle,
                 textAlign: TextAlign.center,
                 style: ThemeUtils.sectionTitle(context),
               ),
@@ -359,21 +295,28 @@ class _MobileCarousel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: PageView.builder(
-            controller: pageController,
-            padEnds: false,
-            physics: isDragging
-                ? const NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
-            onPageChanged: onPageChanged,
-            itemCount: pages.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: index == 0 ? 0 : DashboardLayoutBreakpoints.mobileColumnSpacing / 2,
-                  right: DashboardLayoutBreakpoints.mobileColumnSpacing,
-                ),
-                child: pages[index],
+          child: ValueListenableBuilder<bool>(
+            valueListenable: isDragging,
+            builder: (context, dragging, _) {
+              return PageView.builder(
+                controller: pageController,
+                padEnds: false,
+                physics: dragging
+                    ? const NeverScrollableScrollPhysics()
+                    : const BouncingScrollPhysics(),
+                onPageChanged: onPageChanged,
+                itemCount: pages.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      left: index == 0
+                          ? 0
+                          : DashboardLayoutBreakpoints.mobileColumnSpacing / 2,
+                      right: DashboardLayoutBreakpoints.mobileColumnSpacing,
+                    ),
+                    child: pages[index],
+                  );
+                },
               );
             },
           ),

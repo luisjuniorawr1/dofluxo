@@ -7,11 +7,15 @@ class ExpectedDeliveryDateField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.required = false,
+    this.labelText,
+    this.helpText,
   });
 
   final DateTime? value;
   final ValueChanged<DateTime?> onChanged;
   final bool required;
+  final String? labelText;
+  final String? helpText;
 
   Future<void> _pickDate(BuildContext context) async {
     final now = DateTime.now();
@@ -20,7 +24,7 @@ class ExpectedDeliveryDateField extends StatelessWidget {
       initialDate: value ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 5),
-      helpText: 'Data de conclusão prevista',
+      helpText: helpText ?? 'Data de conclusão prevista',
       cancelText: 'Cancelar',
       confirmText: 'Confirmar',
     );
@@ -39,7 +43,9 @@ class ExpectedDeliveryDateField extends StatelessWidget {
 
     return InputDecorator(
       decoration: InputDecoration(
-        labelText: required ? 'Data de conclusão prevista *' : 'Data de conclusão prevista',
+        labelText: required
+            ? '${labelText ?? 'Data de conclusão prevista'} *'
+            : (labelText ?? 'Data de conclusão prevista'),
         border: const OutlineInputBorder(),
         prefixIcon: const Icon(Icons.event_outlined),
         suffixIcon: value != null

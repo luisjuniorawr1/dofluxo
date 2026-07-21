@@ -1,17 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
+  ThemeProvider({ThemeMode initialThemeMode = ThemeMode.light})
+    : _themeMode = initialThemeMode;
+
+  static const _themeModeKey = 'theme_mode';
+
   Color _primaryColor = const Color(0xFFFFD700);
   String _agencyName = 'Pequi';
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode;
+
+  ThemeData? _lightTheme;
+  ThemeData? _darkTheme;
+  Color? _themesPrimaryColor;
 
   Color get primaryColor => _primaryColor;
-  String get agencyName => _agencyName.trim().isNotEmpty ? _agencyName.trim() : 'Pequi';
+  String get agencyName =>
+      _agencyName.trim().isNotEmpty ? _agencyName.trim() : 'Pequi';
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
+  ThemeData get lightTheme {
+    _ensureThemes();
+    return _lightTheme!;
+  }
+
+  ThemeData get darkTheme {
+    _ensureThemes();
+    return _darkTheme!;
+  }
+
+  /// Carrega preferência local de tema (sobrevive a deploy/reload).
+  static Future<ThemeProvider> create() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_themeModeKey);
+    final mode = switch (stored) {
+      'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
+    };
+    return ThemeProvider(initialThemeMode: mode);
+  }
+
+  void _ensureThemes() {
+    if (_lightTheme != null && _themesPrimaryColor == _primaryColor) return;
+
+    _themesPrimaryColor = _primaryColor;
+    _lightTheme = AppTheme.build(
+      primaryColor: _primaryColor,
+      brightness: Brightness.light,
+    );
+    _darkTheme = AppTheme.build(
+      primaryColor: _primaryColor,
+      brightness: Brightness.dark,
+    );
+  }
+
+  void _invalidateThemes() {
+    _lightTheme = null;
+    _darkTheme = null;
+    _themesPrimaryColor = null;
+  }
+
+  Future<void> _persistThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = switch (_themeMode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+      ThemeMode.light => 'light',
+    };
+    await prefs.setString(_themeModeKey, value);
+  }
+
   void updateColor(Color newColor) {
     _primaryColor = newColor;
+    _invalidateThemes();
     notifyListeners();
   }
 
@@ -21,15 +87,29 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void applySettings({Color? primaryColor, String? agencyName}) {
-    if (primaryColor != null) _primaryColor = primaryColor;
+    if (primaryColor != null) {
+      _primaryColor = primaryColor.withValues(alpha: 1);
+      _invalidateThemes();
+    }
     if (agencyName != null) {
       _agencyName = agencyName.trim().isNotEmpty ? agencyName.trim() : 'Pequi';
     }
     notifyListeners();
   }
 
+  /// Branding da agência ativa (`agencies/{activeAgencyId}`).
+  void applyAgencyBranding({required String name, required Color color}) {
+    applySettings(primaryColor: color, agencyName: name);
+  }
+
+  /// Reseta só branding (logout/troca de conta). Mantém tema claro/escuro.
+  void resetToDefaults() {
+    applySettings(primaryColor: const Color(0xFFFFD700), agencyName: 'Pequi');
+  }
+
   void toggleTheme() {
     _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
+    _persistThemeMode();
   }
 }

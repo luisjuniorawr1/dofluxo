@@ -4,10 +4,14 @@ class DashboardWelcomeHeader extends StatelessWidget {
   const DashboardWelcomeHeader({
     super.key,
     required this.userName,
+    this.title,
+    this.subtitle,
     this.actions,
   });
 
   final String userName;
+  final String? title;
+  final String? subtitle;
   final Widget? actions;
 
   @override
@@ -17,45 +21,53 @@ class DashboardWelcomeHeader extends StatelessWidget {
         ? 'Olá, Seja bem vindo!'
         : 'Olá $userName, Seja bem vindo!';
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 720;
-
-        if (isCompact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final heading = title != null
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                greeting,
-                style: theme.textTheme.titleLarge?.copyWith(
+                title!,
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
-              if (actions != null) ...[
-                const SizedBox(height: 12),
-                actions!,
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
+              const SizedBox(height: 6),
+              Text(
                 greeting,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+            ],
+          )
+        : Text(
+            greeting,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: theme.colorScheme.onSurface,
             ),
-            if (actions != null) actions!,
-          ],
-        );
-      },
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        heading,
+        if (actions != null) ...[
+          const SizedBox(height: 12),
+          Align(alignment: Alignment.centerLeft, child: actions!),
+        ],
+      ],
     );
   }
 }

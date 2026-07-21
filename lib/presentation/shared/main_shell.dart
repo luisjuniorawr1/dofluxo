@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/agency/agency_context.dart';
+import '../../core/theme/theme_provider.dart';
 import '../auth/manager/auth_service.dart';
 import '../clients/pages/clients_page.dart';
 import '../dashboard/pages/dashboard_page.dart';
-import '../profile/pages/profile_page.dart';
-import '../../core/theme/theme_provider.dart';
+import '../agency/widgets/agency_switcher.dart';
+import '../agency/agency_service_scope.dart';
+import '../team/pages/team_page.dart';
+import '../account/pages/account_page.dart';
 import '../projects/pages/project_detail_page.dart';
 import 'theme_toggle_button.dart';
 import 'widgets/sidebar_delivery_calendar.dart';
@@ -23,7 +27,8 @@ class _MainShellState extends State<MainShell> {
   final List<Widget> _pages = [
     const DashboardPage(),
     const ClientsPage(),
-    const TeamPlaceholder(),
+    const TeamPage(),
+    const AccountPage(),
   ];
 
   Future<void> _handleLogout() async {
@@ -33,21 +38,38 @@ class _MainShellState extends State<MainShell> {
         title: const Text('Sair da conta'),
         content: const Text('Deseja encerrar sua sessão?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sair')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair'),
+          ),
         ],
       ),
     );
 
     if (confirmed != true) return;
 
+    if (!mounted) return;
+    context.read<AgencyContext>().reset();
+    context.read<ThemeProvider>().resetToDefaults();
     await _authService.signOut();
   }
 
-  Future<void> _openProjectFromCalendar(String projectId, {required bool isMobile}) async {
+  Future<void> _openProjectFromCalendar(
+    String projectId, {
+    required bool isMobile,
+  }) async {
     if (isMobile) Navigator.pop(context);
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => ProjectDetailPage(projectId: projectId)),
+      MaterialPageRoute(
+        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+          context,
+          ProjectDetailPage(projectId: projectId),
+        ),
+      ),
     );
   }
 
@@ -62,13 +84,28 @@ class _MainShellState extends State<MainShell> {
           ? null
           : AppBar(
               title: Text(agencyName),
-              actions: const [ThemeToggleButton()],
+              actions: const [ThemeToggleButton(), SizedBox(width: 4)],
             ),
       drawer: isDesktop ? null : _buildSidebar(isMobile: true),
-      body: Row(
+      body: Stack(
+        clipBehavior: Clip.none,
         children: [
-          if (isDesktop) _buildSidebar(),
-          Expanded(child: _pages[_currentIndex]),
+          Row(
+            children: [
+              if (isDesktop) _buildSidebar(),
+              Expanded(
+                child: IndexedStack(index: _currentIndex, children: _pages),
+              ),
+            ],
+          ),
+          if (isDesktop)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: ThemeToggleButton(
+                iconColor: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
         ],
       ),
     );
@@ -105,35 +142,21 @@ class _MainShellState extends State<MainShell> {
               color: onPrimary.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: 24),
+          AgencySwitcher(onPrimary: onPrimary),
+          const SizedBox(height: 8),
           _navItem(0, 'Dashboard', Icons.dashboard_rounded, isMobile),
           _navItem(1, 'Clientes', Icons.business_rounded, isMobile),
           _navItem(2, 'Equipe', Icons.people_alt_rounded, isMobile),
-          const SizedBox(height: 8),
-          _settingsItem(isMobile),
+          _navItem(3, 'Conta', Icons.person_outline_rounded, isMobile),
           const SizedBox(height: 16),
           Expanded(
             child: SingleChildScrollView(
               child: SidebarDeliveryCalendar(
                 onPrimary: onPrimary,
-                onProjectTap: (projectId) => _openProjectFromCalendar(projectId, isMobile: isMobile),
+                onProjectTap: (projectId) =>
+                    _openProjectFromCalendar(projectId, isMobile: isMobile),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ThemeToggleButton(iconColor: onPrimary),
-              const SizedBox(width: 4),
-              Text(
-                'Tema',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: onPrimary.withValues(alpha: 0.8),
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 12),
           InkWell(
@@ -143,7 +166,11 @@ class _MainShellState extends State<MainShell> {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               child: Row(
                 children: [
-                  Icon(Icons.logout_rounded, size: 18, color: onPrimary.withValues(alpha: 0.8)),
+                  Icon(
+                    Icons.logout_rounded,
+                    size: 18,
+                    color: onPrimary.withValues(alpha: 0.8),
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     'Sair',
@@ -162,41 +189,6 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _settingsItem(bool isMobile) {
-    final theme = Theme.of(context);
-    final onPrimary = theme.colorScheme.onPrimary;
-
-    return InkWell(
-      onTap: () async {
-        if (isMobile) Navigator.pop(context);
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const ProfilePage()),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.settings_outlined, size: 18, color: onPrimary.withValues(alpha: 0.7)),
-            const SizedBox(width: 10),
-            Text(
-              'Configurações',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: onPrimary.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _navItem(int index, String label, IconData icon, bool isMobile) {
     final selected = _currentIndex == index;
     final theme = Theme.of(context);
@@ -211,12 +203,18 @@ class _MainShellState extends State<MainShell> {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? onPrimary.withValues(alpha: 0.2) : Colors.transparent,
+          color: selected
+              ? onPrimary.withValues(alpha: 0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: selected ? onPrimary : onPrimary.withValues(alpha: 0.7)),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? onPrimary : onPrimary.withValues(alpha: 0.7),
+            ),
             const SizedBox(width: 10),
             Text(
               label,
@@ -228,23 +226,6 @@ class _MainShellState extends State<MainShell> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class TeamPlaceholder extends StatelessWidget {
-  const TeamPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Equipe',
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
       ),
     );
   }

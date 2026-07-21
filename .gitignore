@@ -23,6 +23,9 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Node (firebase-tools local scripts; not part of Flutter analysis)
+node_modules/
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -43,3 +46,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase Admin (nunca commitar)
+scripts/serviceAccountKey.json
+**/*serviceAccount*.json
+**/*firebase-adminsdk*.json

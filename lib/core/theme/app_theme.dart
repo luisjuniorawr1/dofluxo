@@ -17,10 +17,16 @@ class AppTheme {
       brightness: brightness,
     );
 
-    final onSurface = isDark ? const Color(0xFFEAEAEA) : const Color(0xFF1A1A1A);
-    final onSurfaceVariant = isDark ? const Color(0xFFB8B8B8) : const Color(0xFF5A5A5A);
+    final onSurface = isDark
+        ? const Color(0xFFEAEAEA)
+        : const Color(0xFF1A1A1A);
+    final onSurfaceVariant = isDark
+        ? const Color(0xFFB8B8B8)
+        : const Color(0xFF5A5A5A);
     final surface = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
-    final surfaceContainerHighest = isDark ? const Color(0xFF383838) : const Color(0xFFD8D8D8);
+    final surfaceContainerHighest = isDark
+        ? const Color(0xFF383838)
+        : const Color(0xFFD8D8D8);
 
     final onBrand = ThemeUtils.getContrastColor(primaryColor);
     final contentAccent = ThemeUtils.readableAccent(
@@ -40,13 +46,23 @@ class AppTheme {
       surface: surface,
       onSurface: onSurface,
       onSurfaceVariant: onSurfaceVariant,
-      surfaceContainerLowest: isDark ? const Color(0xFF0D0D0D) : const Color(0xFFFFFFFF),
-      surfaceContainerLow: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF3F3F3),
-      surfaceContainer: isDark ? const Color(0xFF242424) : const Color(0xFFEBEBEB),
-      surfaceContainerHigh: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE4E4E4),
+      surfaceContainerLowest: isDark
+          ? const Color(0xFF0D0D0D)
+          : const Color(0xFFFFFFFF),
+      surfaceContainerLow: isDark
+          ? const Color(0xFF1C1C1C)
+          : const Color(0xFFF3F3F3),
+      surfaceContainer: isDark
+          ? const Color(0xFF242424)
+          : const Color(0xFFEBEBEB),
+      surfaceContainerHigh: isDark
+          ? const Color(0xFF2C2C2C)
+          : const Color(0xFFE4E4E4),
       surfaceContainerHighest: surfaceContainerHighest,
       outline: isDark ? const Color(0xFF8E8E8E) : const Color(0xFF6E6E6E),
-      outlineVariant: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFBDBDBD),
+      outlineVariant: isDark
+          ? const Color(0xFF4A4A4A)
+          : const Color(0xFFBDBDBD),
     );
 
     final agencyColors = AgencyThemeColors(
@@ -56,7 +72,9 @@ class AppTheme {
       contentAccentOnFilled: contentAccentOnFilled,
     );
 
-    final baseTextTheme = isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme;
+    final baseTextTheme = isDark
+        ? ThemeData.dark().textTheme
+        : ThemeData.light().textTheme;
     final textTheme = baseTextTheme.apply(
       bodyColor: colorScheme.onSurface,
       displayColor: colorScheme.onSurface,
@@ -89,6 +107,7 @@ class AppTheme {
           fontWeight: FontWeight.w700,
         ),
         actionsIconTheme: IconThemeData(color: colorScheme.onSurface),
+        actionsPadding: const EdgeInsets.only(right: 48),
       ),
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerLow,
@@ -110,11 +129,21 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: isDark ? 0.5 : 0.4),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(
+          alpha: isDark ? 0.5 : 0.4,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-        floatingLabelStyle: TextStyle(color: contentAccentOnFilled, fontWeight: FontWeight.w600),
-        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8)),
+        floatingLabelStyle: TextStyle(
+          color: contentAccentOnFilled,
+          fontWeight: FontWeight.w600,
+        ),
+        hintStyle: TextStyle(
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+        ),
         prefixIconColor: colorScheme.onSurfaceVariant,
         suffixIconColor: colorScheme.onSurfaceVariant,
         border: outlineBorder,
@@ -148,11 +177,17 @@ class AppTheme {
           color: colorScheme.onSurface,
           fontWeight: FontWeight.w700,
         ),
-        contentTextStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? colorScheme.surfaceContainerHighest : const Color(0xFF323232),
-        contentTextStyle: TextStyle(color: isDark ? colorScheme.onSurface : Colors.white),
+        backgroundColor: isDark
+            ? colorScheme.surfaceContainerHighest
+            : const Color(0xFF323232),
+        contentTextStyle: TextStyle(
+          color: isDark ? colorScheme.onSurface : Colors.white,
+        ),
         actionTextColor: isDark ? contentAccent : Colors.white,
         behavior: SnackBarBehavior.floating,
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../manager/client_service.dart';
+import '../../agency/agency_service_scope.dart';
 import '../models/client_social_link.dart';
 import '../pages/client_form_page.dart';
 import '../widgets/client_social_links_field.dart';
@@ -13,12 +15,16 @@ class ClientsPage extends StatefulWidget {
 }
 
 class _ClientsPageState extends State<ClientsPage> {
-  final ClientService _clientService = ClientService();
-
-  Future<void> _openClientForm({String? docId, Map<String, dynamic>? initialData}) async {
+  Future<void> _openClientForm({
+    String? docId,
+    Map<String, dynamic>? initialData,
+  }) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => ClientFormPage(docId: docId, initialData: initialData),
+        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+          context,
+          ClientFormPage(docId: docId, initialData: initialData),
+        ),
       ),
     );
   }
@@ -30,10 +36,15 @@ class _ClientsPageState extends State<ClientsPage> {
         title: const Text('Excluir cliente'),
         content: Text('Deseja excluir "$name"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Excluir'),
           ),
         ],
@@ -43,7 +54,7 @@ class _ClientsPageState extends State<ClientsPage> {
     if (confirmed != true) return;
 
     try {
-      await _clientService.deleteClient(docId);
+      await context.read<ClientService>().deleteClient(docId);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -62,7 +73,9 @@ class _ClientsPageState extends State<ClientsPage> {
 
     return rawLinks
         .whereType<Map>()
-        .map((item) => ClientSocialLink.fromMap(Map<String, dynamic>.from(item)))
+        .map(
+          (item) => ClientSocialLink.fromMap(Map<String, dynamic>.from(item)),
+        )
         .where((link) => link.value.isNotEmpty)
         .toList();
   }
@@ -96,7 +109,9 @@ class _ClientsPageState extends State<ClientsPage> {
               Expanded(
                 child: Text(
                   'Clientes',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               FilledButton.icon(
@@ -109,7 +124,7 @@ class _ClientsPageState extends State<ClientsPage> {
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _clientService.getClientsStream(),
+              stream: context.read<ClientService>().getClientsStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
@@ -148,9 +163,14 @@ class _ClientsPageState extends State<ClientsPage> {
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         leading: CircleAvatar(
-                          child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?'),
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                          ),
                         ),
                         title: Text(
                           name,
@@ -165,7 +185,8 @@ class _ClientsPageState extends State<ClientsPage> {
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            if (responsible != null && responsible.trim().isNotEmpty)
+                            if (responsible != null &&
+                                responsible.trim().isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
@@ -185,10 +206,16 @@ class _ClientsPageState extends State<ClientsPage> {
                             IconButton(
                               icon: const Icon(Icons.edit_outlined),
                               tooltip: 'Editar',
-                              onPressed: () => _openClientForm(docId: doc.id, initialData: data),
+                              onPressed: () => _openClientForm(
+                                docId: doc.id,
+                                initialData: data,
+                              ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete, color: theme.colorScheme.error),
+                              icon: Icon(
+                                Icons.delete,
+                                color: theme.colorScheme.error,
+                              ),
                               tooltip: 'Excluir',
                               onPressed: () => _confirmDelete(doc.id, name),
                             ),

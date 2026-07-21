@@ -1,8 +1,7 @@
 name: dofluxo
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.0+1
-
+version: 1.0.0+29
 environment:
   sdk: ^3.10.0
 
@@ -26,6 +25,7 @@ dependencies:
   mask_text_input_formatter: ^2.9.0
   provider: ^6.1.5+1
   uuid: ^4.5.1
+  shared_preferences: ^2.5.3
   # Pacote profissional para Kanban multiplataforma (substitui o anterior)
   appflowy_board: ^0.1.2 
 

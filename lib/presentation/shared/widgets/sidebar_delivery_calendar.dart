@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/utils/date_format_utils.dart';
 import '../../projects/manager/project_service.dart';
@@ -20,12 +21,11 @@ class SidebarDeliveryCalendar extends StatefulWidget {
   final DeliveryProjectTap? onProjectTap;
 
   @override
-  State<SidebarDeliveryCalendar> createState() => _SidebarDeliveryCalendarState();
+  State<SidebarDeliveryCalendar> createState() =>
+      _SidebarDeliveryCalendarState();
 }
 
 class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
-  final ProjectService _projectService = ProjectService();
-
   late DateTime _focusedMonth;
   DateTime? _selectedDay;
 
@@ -60,7 +60,8 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
   }
 
   void _syncSelectionWithFocusedMonth() {
-    if (_selectedDay != null && !DateFormatUtils.isSameMonth(_selectedDay!, _focusedMonth)) {
+    if (_selectedDay != null &&
+        !DateFormatUtils.isSameMonth(_selectedDay!, _focusedMonth)) {
       final now = DateTime.now();
       _selectedDay = DateFormatUtils.isSameMonth(now, _focusedMonth)
           ? DateFormatUtils.dateOnly(now)
@@ -75,13 +76,16 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: _projectService.getProjectsStream(),
+      stream: context.read<ProjectService>().getProjectsStream(),
       builder: (context, snapshot) {
         final grouped = snapshot.hasData
             ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)
             : <DateTime, List<CalendarDeliveryEntry>>{};
 
-        final monthCount = DeliveryCalendarMapper.countInMonth(grouped, _focusedMonth);
+        final monthCount = DeliveryCalendarMapper.countInMonth(
+          grouped,
+          _focusedMonth,
+        );
         final selectedEntries = _selectedDay == null
             ? const <CalendarDeliveryEntry>[]
             : DeliveryCalendarMapper.entriesForDay(grouped, _selectedDay!);
@@ -136,7 +140,11 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
             child: Text(
               '$monthCount entrega${monthCount == 1 ? '' : 's'} no mês',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: muted),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: muted,
+              ),
             ),
           ),
       ],
@@ -181,7 +189,11 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
 
   Widget _buildMonthGrid(Map<DateTime, List<CalendarDeliveryEntry>> grouped) {
     final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _focusedMonth.year,
+      _focusedMonth.month + 1,
+      0,
+    ).day;
     final leading = firstDay.weekday % 7;
     final today = DateFormatUtils.dateOnly(DateTime.now());
     final totalCells = ((leading + daysInMonth + 6) ~/ 7) * 7;
@@ -201,8 +213,14 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
           return const SizedBox.shrink();
         }
 
-        final day = DateTime(_focusedMonth.year, _focusedMonth.month, dayNumber);
-        final hasDeliveries = grouped.containsKey(DateFormatUtils.dateOnly(day));
+        final day = DateTime(
+          _focusedMonth.year,
+          _focusedMonth.month,
+          dayNumber,
+        );
+        final hasDeliveries = grouped.containsKey(
+          DateFormatUtils.dateOnly(day),
+        );
         final isSelected = DateFormatUtils.isSameDay(day, _selectedDay);
         final isToday = DateFormatUtils.isSameDay(day, today);
 
@@ -247,13 +265,15 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
               style: TextStyle(fontSize: 10, color: muted),
             )
           else
-            ...entries.map((entry) => _DeliveryTile(
-                  entry: entry,
-                  onPrimary: widget.onPrimary,
-                  onTap: widget.onProjectTap == null
-                      ? null
-                      : () => widget.onProjectTap!(entry.projectId),
-                )),
+            ...entries.map(
+              (entry) => _DeliveryTile(
+                entry: entry,
+                onPrimary: widget.onPrimary,
+                onTap: widget.onProjectTap == null
+                    ? null
+                    : () => widget.onProjectTap!(entry.projectId),
+              ),
+            ),
         ],
       ),
     );
@@ -282,8 +302,8 @@ class _DayCell extends StatelessWidget {
     final background = isSelected
         ? onPrimary.withValues(alpha: 0.28)
         : isToday
-            ? onPrimary.withValues(alpha: 0.14)
-            : Colors.transparent;
+        ? onPrimary.withValues(alpha: 0.14)
+        : Colors.transparent;
 
     return Material(
       color: background,
@@ -298,7 +318,9 @@ class _DayCell extends StatelessWidget {
               '$day',
               style: TextStyle(
                 fontSize: 10,
-                fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w600,
+                fontWeight: isSelected || isToday
+                    ? FontWeight.w800
+                    : FontWeight.w600,
                 color: onPrimary.withValues(alpha: isSelected ? 1 : 0.9),
               ),
             ),
@@ -356,7 +378,8 @@ class _DeliveryTile extends StatelessWidget {
                     height: 1.25,
                   ),
                 ),
-                if (entry.statusLabel != null && entry.statusLabel!.isNotEmpty) ...[
+                if (entry.statusLabel != null &&
+                    entry.statusLabel!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     entry.statusLabel!,

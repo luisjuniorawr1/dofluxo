@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dofluxo/core/theme/theme_provider.dart';
 import 'package:dofluxo/presentation/shared/theme_toggle_button.dart';
 
 void main() {
-  testWidgets('Theme toggle switches between light and dark mode', (tester) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  SharedPreferences.setMockInitialValues({});
+
+  testWidgets('Theme toggle switches between light and dark mode', (
+    tester,
+  ) async {
     final themeProvider = ThemeProvider();
 
     await tester.pumpWidget(
@@ -15,9 +22,7 @@ void main() {
         themeMode: themeProvider.themeMode,
         home: ChangeNotifierProvider.value(
           value: themeProvider,
-          child: const Scaffold(
-            body: ThemeToggleButton(),
-          ),
+          child: const Scaffold(body: ThemeToggleButton()),
         ),
       ),
     );
@@ -30,5 +35,12 @@ void main() {
 
     expect(themeProvider.isDarkMode, isTrue);
     expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
+  });
+
+  testWidgets('Theme preference is restored from local storage', (tester) async {
+    SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
+    final themeProvider = await ThemeProvider.create();
+
+    expect(themeProvider.isDarkMode, isTrue);
   });
 }

@@ -1,3 +1,6 @@
+// Fake Firestore snapshots for unit tests (sealed in cloud_firestore).
+// ignore_for_file: subtype_of_sealed_class
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dofluxo/presentation/shared/utils/delivery_calendar_mapper.dart';

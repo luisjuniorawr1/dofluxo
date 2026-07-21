@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../manager/client_service.dart';
 import '../models/client_social_link.dart';
 import '../widgets/client_social_links_field.dart';
 import '../../../core/utils/theme_utils.dart';
 
 class ClientFormPage extends StatefulWidget {
-  const ClientFormPage({
-    super.key,
-    this.docId,
-    this.initialData,
-  });
+  const ClientFormPage({super.key, this.docId, this.initialData});
 
   final String? docId;
   final Map<String, dynamic>? initialData;
@@ -22,7 +19,6 @@ class ClientFormPage extends StatefulWidget {
 
 class _ClientFormPageState extends State<ClientFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _clientService = ClientService();
 
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
@@ -39,18 +35,32 @@ class _ClientFormPageState extends State<ClientFormPage> {
     super.initState();
     final data = widget.initialData ?? {};
 
-    _nameController = TextEditingController(text: data['name'] as String? ?? '');
-    _emailController = TextEditingController(text: data['email'] as String? ?? '');
-    _phoneController = TextEditingController(text: data['phone'] as String? ?? '');
-    _sectorController = TextEditingController(text: data['sector'] as String? ?? '');
-    _responsibleController = TextEditingController(text: data['responsible'] as String? ?? '');
-    _addressController = TextEditingController(text: data['address'] as String? ?? '');
+    _nameController = TextEditingController(
+      text: data['name'] as String? ?? '',
+    );
+    _emailController = TextEditingController(
+      text: data['email'] as String? ?? '',
+    );
+    _phoneController = TextEditingController(
+      text: data['phone'] as String? ?? '',
+    );
+    _sectorController = TextEditingController(
+      text: data['sector'] as String? ?? '',
+    );
+    _responsibleController = TextEditingController(
+      text: data['responsible'] as String? ?? '',
+    );
+    _addressController = TextEditingController(
+      text: data['address'] as String? ?? '',
+    );
 
     final rawLinks = data['socialLinks'];
     if (rawLinks is List) {
       _socialLinks = rawLinks
           .whereType<Map>()
-          .map((item) => ClientSocialLink.fromMap(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => ClientSocialLink.fromMap(Map<String, dynamic>.from(item)),
+          )
           .where((link) => link.value.isNotEmpty)
           .toList();
     }
@@ -88,15 +98,20 @@ class _ClientFormPageState extends State<ClientFormPage> {
       final payload = _buildPayload();
 
       if (widget.isEditing) {
-        await _clientService.updateClient(widget.docId!, payload);
+        await context.read<ClientService>().updateClient(
+          widget.docId!,
+          payload,
+        );
       } else {
-        await _clientService.addClient(payload);
+        await context.read<ClientService>().addClient(payload);
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.isEditing ? 'Cliente atualizado!' : 'Cliente criado!'),
+            content: Text(
+              widget.isEditing ? 'Cliente atualizado!' : 'Cliente criado!',
+            ),
           ),
         );
         Navigator.pop(context, true);
@@ -170,10 +185,7 @@ class _ClientFormPageState extends State<ClientFormPage> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                Text(
-                  'Empresa',
-                  style: ThemeUtils.sectionTitle(context),
-                ),
+                Text('Empresa', style: ThemeUtils.sectionTitle(context)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _sectorController,
@@ -226,7 +238,11 @@ class _ClientFormPageState extends State<ClientFormPage> {
                           height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(widget.isEditing ? 'Salvar alterações' : 'Criar cliente'),
+                      : Text(
+                          widget.isEditing
+                              ? 'Salvar alterações'
+                              : 'Criar cliente',
+                        ),
                 ),
               ],
             ),

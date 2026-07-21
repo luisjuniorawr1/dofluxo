@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import '../../../core/settings/settings_service.dart';
+
+import '../../../core/agency/agency_context.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/theme_utils.dart';
-import '../../shared/theme_toggle_button.dart';
+import '../../agency/pages/agency_onboarding_page.dart';
+import '../../agency/pages/join_agency_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,62 +17,49 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final SettingsService _settingsService = SettingsService();
   final TextEditingController _agencyNameController = TextEditingController();
   Color _tempColor = const Color(0xFFFFD700);
   bool _isSaving = false;
+  bool _loadedFromContext = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loadedFromContext) return;
 
-  Future<void> _loadSettings() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    try {
-      final settings = await _settingsService.load(uid);
-      if (!mounted) return;
-      setState(() {
-        _agencyNameController.text = settings.agencyName;
-        _tempColor = settings.primaryColor;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar configurações: $e');
-    }
+    final agencyContext = context.read<AgencyContext>();
+    _agencyNameController.text = agencyContext.activeAgencyName;
+    _tempColor = agencyContext.activePrimaryColor;
+    _loadedFromContext = true;
   }
 
   Future<void> _saveSettings() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
     setState(() => _isSaving = true);
 
-    final settings = AgencySettings(
-      agencyName: _agencyNameController.text.trim(),
-      primaryColor: _tempColor,
-    );
-
     try {
-      await _settingsService.save(uid, settings);
+      await context.read<AgencyContext>().updateActiveAgencyBranding(
+        name: _agencyNameController.text.trim(),
+        primaryColor: _tempColor,
+      );
 
-      if (mounted) {
-        Provider.of<ThemeProvider>(context, listen: false).applySettings(
-          primaryColor: settings.primaryColor,
-          agencyName: settings.agencyName,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Configurações salvas com sucesso!',
-              style: TextStyle(color: ThemeUtils.getContrastColor(AppTheme.success)),
+      if (!mounted) return;
+
+      context.read<ThemeProvider>().applyAgencyBranding(
+        name: _agencyNameController.text.trim(),
+        color: _tempColor,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Configurações salvas com sucesso!',
+            style: TextStyle(
+              color: ThemeUtils.getContrastColor(AppTheme.success),
             ),
-            backgroundColor: AppTheme.success,
           ),
-        );
-      }
+          backgroundColor: AppTheme.success,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -95,10 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configurações da Agência'),
-        actions: const [ThemeToggleButton()],
-      ),
+      appBar: AppBar(title: const Text('Configurações da Agência')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -118,17 +103,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text(
                   'Cor Principal da Marca',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
                     'Selecionar cor',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   subtitle: Text(
-                    'Clique para alterar a cor do sistema',
+                    'Alterações são salvas em agencies/{activeAgencyId}',
                     style: ThemeUtils.bodyMuted(context),
                   ),
                   trailing: Container(
@@ -158,6 +145,45 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 40),
+                Text(
+                  'Minhas agências',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Entre em um cliente com código de convite ou crie outro workspace.',
+                  style: ThemeUtils.bodyMuted(context),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (context) => const JoinAgencyPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.vpn_key_outlined),
+                  label: const Text('Entrar em uma agência'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (context) =>
+                            const AgencyOnboardingPage(isAdditional: true),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_business_outlined),
+                  label: const Text('Criar nova agência'),
+                ),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
@@ -170,7 +196,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Salvar Alterações', style: TextStyle(fontSize: 16)),
+                        : const Text(
+                            'Salvar Alterações',
+                            style: TextStyle(fontSize: 16),
+                          ),
                   ),
                 ),
               ],
