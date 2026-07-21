@@ -99,7 +99,7 @@ abstract final class KanbanConstants {
     id: 'aprovacao',
     title: 'Aprovação',
     cardColor: Color(0xFFFF9100),
-    cardHeaderColor: Color(0xFFFF6D00),
+    cardHeaderColor: Color(0xFFE65100),
     stackFlex: stackedTopFlex,
   );
 
@@ -107,7 +107,7 @@ abstract final class KanbanConstants {
     id: 'concluidos',
     title: 'Concluídos',
     cardColor: Color(0xFFC6FF00),
-    cardHeaderColor: Color(0xFF64DD17),
+    cardHeaderColor: Color(0xFF558B2F),
     stackFlex: stackedBottomFlex,
   );
 
