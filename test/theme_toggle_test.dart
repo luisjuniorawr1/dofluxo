@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dofluxo/core/theme/theme_preference_store.dart';
 import 'package:dofluxo/core/theme/theme_provider.dart';
 import 'package:dofluxo/presentation/shared/theme_toggle_button.dart';
 
@@ -37,8 +38,31 @@ void main() {
     expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
   });
 
+  test('toggleTheme persists preference to storage', () async {
+    SharedPreferences.setMockInitialValues({});
+    final themeProvider = ThemeProvider();
+
+    await themeProvider.toggleTheme();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(ThemePreferenceStore.storageKey), 'dark');
+  });
+
   testWidgets('Theme preference is restored from local storage', (tester) async {
-    SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
+    SharedPreferences.setMockInitialValues({
+      ThemePreferenceStore.storageKey: 'dark',
+    });
+    final themeProvider = await ThemeProvider.create();
+
+    expect(themeProvider.isDarkMode, isTrue);
+  });
+
+  testWidgets('Theme preference migrates legacy shared preferences key', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      ThemePreferenceStore.legacySharedPreferencesKey: 'dark',
+    });
     final themeProvider = await ThemeProvider.create();
 
     expect(themeProvider.isDarkMode, isTrue);

@@ -30,15 +30,23 @@ class _AppBootstrapState extends State<_AppBootstrap> {
   AgencyContext? _agencyContext;
   Object? _initError;
 
-  static ThemeData get _loadingTheme => ThemeData(
+  static ThemeData _bootstrapTheme({required Brightness brightness}) => ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF121212),
+    brightness: brightness,
+    scaffoldBackgroundColor:
+        brightness == Brightness.dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
     colorScheme: ColorScheme.fromSeed(
       seedColor: const Color(0xFFFFD700),
-      brightness: Brightness.dark,
+      brightness: brightness,
     ),
   );
+
+  ThemeData get _loadingTheme {
+    final brightness = _themeProvider?.isDarkMode == true
+        ? Brightness.dark
+        : Brightness.light;
+    return _bootstrapTheme(brightness: brightness);
+  }
 
   @override
   void initState() {
@@ -108,7 +116,7 @@ class DofluxoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       title: 'DOFLUXO',

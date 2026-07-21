@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_theme.dart';
+import 'theme_preference_store.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeProvider({ThemeMode initialThemeMode = ThemeMode.light})
     : _themeMode = initialThemeMode;
-
-  static const _themeModeKey = 'theme_mode';
 
   Color _primaryColor = const Color(0xFFFFD700);
   String _agencyName = 'Pequi';
@@ -35,8 +33,7 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Carrega preferência local de tema (sobrevive a deploy/reload).
   static Future<ThemeProvider> create() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_themeModeKey);
+    final stored = await ThemePreferenceStore.read();
     final mode = switch (stored) {
       'dark' => ThemeMode.dark,
       'system' => ThemeMode.system,
@@ -66,13 +63,12 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   Future<void> _persistThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
     final value = switch (_themeMode) {
       ThemeMode.dark => 'dark',
       ThemeMode.system => 'system',
       ThemeMode.light => 'light',
     };
-    await prefs.setString(_themeModeKey, value);
+    await ThemePreferenceStore.write(value);
   }
 
   void updateColor(Color newColor) {
@@ -107,9 +103,9 @@ class ThemeProvider extends ChangeNotifier {
     applySettings(primaryColor: const Color(0xFFFFD700), agencyName: 'Pequi');
   }
 
-  void toggleTheme() {
+  Future<void> toggleTheme() async {
     _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
-    _persistThemeMode();
+    await _persistThemeMode();
   }
 }
