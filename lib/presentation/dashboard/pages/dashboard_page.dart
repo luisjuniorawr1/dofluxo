@@ -8,9 +8,12 @@ import '../../projects/pages/project_detail_page.dart';
 import '../../projects/widgets/new_project_dialog.dart';
 import '../config/dashboard_layout_breakpoints.dart';
 import '../config/dashboard_stages.dart';
+import '../models/project_board_item.dart';
+import '../utils/board_order_utils.dart';
 import '../utils/dashboard_board_mapper.dart';
 import '../widgets/dashboard_welcome_header.dart';
 import '../widgets/dashboard_board_layout.dart';
+import '../widgets/dashboard_workflow_board.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -23,15 +26,61 @@ class _DashboardPageState extends State<DashboardPage> {
   final ProjectService _projectService = ProjectService();
   final _uuid = const Uuid();
   bool _isCreatingProject = false;
-  bool _isMovingProject = false;
+  final Set<String> _movingProjectIds = {};
 
-  Future<void> _moveProject(String projectId, DashboardStageId targetStage) async {
-    if (_isMovingProject) return;
+  Future<void> _moveProject(
+    ProjectMoveIntent intent,
+    Map<String, List<ProjectBoardItem>> fullBoard,
+  ) async {
+    if (_movingProjectIds.contains(intent.projectId)) return;
 
-    setState(() => _isMovingProject = true);
+    final stageKey = intent.targetStage.name;
+    final fullColumn = fullBoard[stageKey] ?? const <ProjectBoardItem>[];
+    final visibleColumn = fullColumn;
+
+    final targetIndex = BoardOrderUtils.resolveKanbanTargetIndex(
+      visibleColumn: visibleColumn,
+      fullColumn: fullColumn,
+      draggedProjectId: intent.projectId,
+      visibleDropIndex: intent.visibleDropIndex,
+      visibleDragIndex: intent.visibleDragIndex,
+    );
+
+    final dropPosition = BoardOrderUtils.resolveDropPosition(
+      fullColumn: fullColumn,
+      draggedProjectId: intent.projectId,
+      targetIndex: targetIndex,
+    );
+
+    final currentStageKey = fullBoard.entries
+        .where((entry) => entry.value.any((item) => item.id == intent.projectId))
+        .map((entry) => entry.key)
+        .firstOrNull;
+
+    if (currentStageKey == stageKey) {
+      final existingIndex = fullColumn.indexWhere((item) => item.id == intent.projectId);
+      if (existingIndex >= 0) {
+        final currentBefore = existingIndex > 0 ? fullColumn[existingIndex - 1].id : null;
+        final currentAfter =
+            existingIndex < fullColumn.length - 1 ? fullColumn[existingIndex + 1].id : null;
+        if (currentBefore == dropPosition.beforeProjectId &&
+            currentAfter == dropPosition.afterProjectId) {
+          return;
+        }
+      }
+    }
+
+    _movingProjectIds.add(intent.projectId);
+
     try {
-      final status = DashboardBoardMapper.firestoreStatusForStage(targetStage);
-      await _projectService.updateProjectStatus(projectId, status);
+      await _projectService.moveProject(
+        projectId: intent.projectId,
+        targetStatus: DashboardBoardMapper.firestoreStatusForStage(intent.targetStage),
+        targetColumnProjectIds:
+            fullColumn.map((item) => item.id).toList(growable: false),
+        beforeProjectId: dropPosition.beforeProjectId,
+        afterProjectId: dropPosition.afterProjectId,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -42,7 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isMovingProject = false);
+      _movingProjectIds.remove(intent.projectId);
     }
   }
 
@@ -146,15 +195,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final board = snapshot.hasData
+                final fullBoard = snapshot.hasData
                     ? DashboardBoardMapper.groupSnapshot(snapshot.data!)
                     : DashboardBoardMapper.emptyBoard();
-                final statusProjects = DashboardBoardMapper.statusPanelProjects(board);
+                final visibleBoard = fullBoard;
+                final statusProjects = DashboardBoardMapper.statusPanelProjects(fullBoard);
 
                 return DashboardBoardLayout(
-                  itemsByStage: board,
+                  itemsByStage: visibleBoard,
                   statusProjects: statusProjects,
-                  onProjectMove: _moveProject,
+                  onProjectMove: (intent) => _moveProject(intent, fullBoard),
                   onProjectTap: _openProject,
                 );
               },

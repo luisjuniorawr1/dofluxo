@@ -29,6 +29,7 @@ class DashboardBoardLayout extends StatefulWidget {
 
 class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   late final PageController _pageController;
+  final ValueNotifier<String?> _draggingProjectId = ValueNotifier(null);
   int _currentPage = 0;
   bool _isDragging = false;
 
@@ -42,11 +43,17 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
     );
   }
 
-  void _onDragStarted() => setState(() => _isDragging = true);
+  void _onDragStarted(String projectId) {
+    _draggingProjectId.value = projectId;
+    setState(() => _isDragging = true);
+  }
 
-  void _onDragEnded() {
-    if (!mounted) return;
-    setState(() => _isDragging = false);
+  void _onDragEnded(String projectId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _draggingProjectId.value = null;
+      setState(() => _isDragging = false);
+    });
   }
 
   void _goToPage(int index) {
@@ -65,6 +72,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
   @override
   void dispose() {
     _pageController.dispose();
+    _draggingProjectId.dispose();
     super.dispose();
   }
 
@@ -79,6 +87,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
             pageController: _pageController,
             currentPage: _currentPage,
             isDragging: _isDragging,
+            draggingProjectId: _draggingProjectId,
             onPageChanged: (index) => setState(() => _currentPage = index),
             onGoToPage: _goToPage,
             onPreviousPage: _goToPreviousPage,
@@ -95,6 +104,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
         return _DesktopBoard(
           itemsByStage: widget.itemsByStage,
           statusProjects: widget.statusProjects,
+          draggingProjectId: _draggingProjectId,
           onProjectMove: widget.onProjectMove,
           onProjectTap: widget.onProjectTap,
           onDragStarted: _onDragStarted,
@@ -109,6 +119,7 @@ class _DesktopBoard extends StatelessWidget {
   const _DesktopBoard({
     required this.itemsByStage,
     required this.statusProjects,
+    required this.draggingProjectId,
     this.onProjectMove,
     this.onProjectTap,
     this.onDragStarted,
@@ -117,10 +128,11 @@ class _DesktopBoard extends StatelessWidget {
 
   final Map<String, List<ProjectBoardItem>> itemsByStage;
   final List<ProjectBoardItem> statusProjects;
+  final ValueNotifier<String?> draggingProjectId;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +152,7 @@ class _DesktopBoard extends StatelessWidget {
                   incendiosStage: incendios,
                   criacaoItems: itemsByStage[criacao.storageKey] ?? const [],
                   incendiosItems: itemsByStage[incendios.storageKey] ?? const [],
+                  draggingProjectId: draggingProjectId,
                   onProjectMove: onProjectMove,
                   onProjectTap: onProjectTap,
                   onDragStarted: onDragStarted,
@@ -154,6 +167,7 @@ class _DesktopBoard extends StatelessWidget {
                 child: WorkflowColumn(
                   stage: stage,
                   items: itemsByStage[stage.storageKey] ?? const [],
+                  draggingProjectId: draggingProjectId,
                   onProjectMove: onProjectMove,
                   onProjectTap: onProjectTap,
                   onDragStarted: onDragStarted,
@@ -174,6 +188,7 @@ class _MobileCarousel extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.isDragging,
+    required this.draggingProjectId,
     required this.onPageChanged,
     required this.onGoToPage,
     required this.onPreviousPage,
@@ -189,6 +204,7 @@ class _MobileCarousel extends StatelessWidget {
   final PageController pageController;
   final int currentPage;
   final bool isDragging;
+  final ValueNotifier<String?> draggingProjectId;
   final ValueChanged<int> onPageChanged;
   final ValueChanged<int> onGoToPage;
   final VoidCallback onPreviousPage;
@@ -197,8 +213,8 @@ class _MobileCarousel extends StatelessWidget {
   final List<ProjectBoardItem> statusProjects;
   final ProjectMoveCallback? onProjectMove;
   final ProjectTapCallback? onProjectTap;
-  final VoidCallback? onDragStarted;
-  final VoidCallback? onDragEnded;
+  final ProjectDragStartedCallback? onDragStarted;
+  final ProjectDragEndedCallback? onDragEnded;
 
   static const _pageTitles = [
     'Postagens do dia',
@@ -233,6 +249,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: postagens,
         items: itemsByStage[postagens.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,
@@ -242,6 +259,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: criacao,
         items: itemsByStage[criacao.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,
@@ -251,6 +269,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: incendios,
         items: itemsByStage[incendios.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,
@@ -260,6 +279,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: captacao,
         items: itemsByStage[captacao.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,
@@ -269,6 +289,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: edicao,
         items: itemsByStage[edicao.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,
@@ -278,6 +299,7 @@ class _MobileCarousel extends StatelessWidget {
       WorkflowColumn(
         stage: aprovacao,
         items: itemsByStage[aprovacao.storageKey] ?? const [],
+        draggingProjectId: draggingProjectId,
         onProjectMove: onProjectMove,
         onProjectTap: onProjectTap,
         onDragStarted: onDragStarted,

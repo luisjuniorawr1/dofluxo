@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/dashboard_stages.dart';
 import '../models/project_board_item.dart';
+import 'board_order_utils.dart';
 
 /// Mapeia documentos Firestore para colunas do dashboard.
 class DashboardBoardMapper {
@@ -25,6 +26,8 @@ class DashboardBoardMapper {
       final stageKey = stageIdForStatus(data['status'] as String?).name;
       board[stageKey]!.add(item);
     }
+
+    sortBoardColumns(board);
 
     return board;
   }
