@@ -346,7 +346,9 @@ class _DropTargetShell<T> extends StatelessWidget {
         columnItems.indexWhere((item) => itemId(item) == data.itemId);
     final isSameColumn = data.fromColumnId == columnId;
     if (isSameColumn && fromIndex != -1) {
-      if (dropIndex == fromIndex || dropIndex == fromIndex + 1) return false;
+      // Only the card's own slot is a no-op. Dropping on the next card means
+      // "take that position" (insert after it) and must be accepted.
+      if (dropIndex == fromIndex) return false;
     }
 
     return true;
@@ -360,6 +362,7 @@ class _DropTargetShell<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DragTarget<KanbanDragData<T>>(
+      hitTestBehavior: HitTestBehavior.translucent,
       onWillAcceptWithDetails: (details) => _canAccept(details.data),
       onAcceptWithDetails: (details) => _handleAccept(details.data),
       builder: (context, candidateData, rejectedData) {

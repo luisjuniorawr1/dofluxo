@@ -139,6 +139,7 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
       fullColumn: fullColumn,
       draggedProjectId: item.id,
       visibleDropIndex: visibleDropIndex,
+      visibleDragIndex: visibleDragIndex,
     );
 
     final sourceZone = KanbanConstants.findById(dragData.fromColumnId)?.zoneId;
@@ -157,12 +158,9 @@ class _DashboardBoardLayoutState extends State<DashboardBoardLayout> {
       draggedProjectId: item.id,
     );
 
-    // Optimistic UI uses the visible list; convert insert-before (with item)
-    // to insert index after removal.
-    var optimisticIndex = visibleDropIndex;
-    if (visibleDragIndex != null && visibleDropIndex > visibleDragIndex) {
-      optimisticIndex = visibleDropIndex - 1;
-    }
+    // Same-column down: drop on a card = insert after it → visibleDropIndex
+    // already matches the post-removal insert index. Up/cross: insert-before.
+    final optimisticIndex = visibleDropIndex;
     _applyOptimisticMove(item, targetColumnId, optimisticIndex);
     _onDragEnded();
 
