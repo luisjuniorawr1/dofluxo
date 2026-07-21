@@ -313,6 +313,22 @@ Arquivo: `firestore.indexes.json`. Deploy: `firebase deploy --only firestore:ind
 
 **Índice de campo único (não versionado):** `users.email` — query `where('email', isEqualTo: …)` em `UserService.findByEmail`. O Firestore indexa automaticamente; **não** declarar em `firestore.indexes.json` (deploy rejeita com *"this index is not necessary, configure using single field index controls"*).
 
+### Atualização obrigatória (web)
+
+Força clientes com o app aberto a atualizar quando uma nova versão é publicada.
+
+| Componente | Papel |
+|------------|-------|
+| `deploy.ps1` (raiz) | Incrementa build em `pubspec.yaml`, builda com `--dart-define=APP_VERSION=…`, `firebase deploy --only hosting` |
+| `deploy-web.ps1` | Atalho legado → chama `deploy.ps1` |
+| `lib/core/update/app_update_logic.dart` | `normalizeVersionJson`, `isUpdateRequired`, `formatCountdown` |
+| `lib/core/update/app_version_service*.dart` | Lê `/version.json`; foco/`visibilitychange`; reload síncrono |
+| `lib/core/update/app_update_gate.dart` | `MaterialApp.builder` → banner canto inferior direito |
+
+**Fluxo:** baseline = `APP_VERSION` compilada (ou 1ª leitura de `/version.json`). Checagem a cada **~2,5 min** + ao focar/voltar à aba. Se remota ≠ sessão → banner **"Atualização disponível"** + contador **5:00 → 0:00** (auto-reload) + botão **"Atualizar agora"**. Aviso amarelo sobre formulários. Não há botão de fechar. Falha de rede silenciosa. Só web.
+
+**Hosting:** `index.html`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` com `Cache-Control: no-store` (regras específicas **depois** do catch-all de JS). Build sem service worker.
+
 ---
 
 ## Modelos de dados

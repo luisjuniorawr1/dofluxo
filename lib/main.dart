@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/agency/agency_context.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/update/app_update_gate.dart';
 import 'presentation/shared/widgets/dofluxo_bootstrap_loading.dart';
 import 'presentation/agency/agency_gate.dart';
 import 'presentation/auth/manager/auth_service.dart';
@@ -114,6 +115,7 @@ class DofluxoApp extends StatelessWidget {
       themeAnimationDuration: Duration.zero,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
+      builder: (context, child) => AppUpdateGate(child: child),
       home: const AuthGate(),
     );
   }

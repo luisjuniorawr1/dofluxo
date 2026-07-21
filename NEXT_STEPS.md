@@ -149,9 +149,12 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 
 | # | Tarefa | Esforço |
 |---|--------|---------|
-| 9 | Firebase Hosting (`flutter build web` + deploy) | Médio |
+| 9 | Firebase Hosting (`flutter build web` + deploy) | ✅ `.\deploy.ps1` |
+| 9b | Atualização obrigatória web (banner + countdown 5 min) | ✅ |
 | 10 | README de setup para novos devs | Baixo |
 | 11 | CI: `flutter analyze` + `flutter test` | Baixo |
+
+> **Deploy web:** `.\deploy.ps1` na raiz. Incrementa a versão, builda e publica. O bump dispara o aviso nos clientes com o app aberto.
 
 ### Sprint 4 — Produto 🟢
 

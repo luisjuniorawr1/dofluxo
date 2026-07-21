@@ -16,6 +16,15 @@
     ],
     "headers": [
       {
+        "source": "**/*.@(js|css|wasm)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400"
+          }
+        ]
+      },
+      {
         "source": "/flutter_service_worker.js",
         "headers": [
           {
@@ -52,11 +61,11 @@
         ]
       },
       {
-        "source": "**/*.@(js|css|wasm)",
+        "source": "/version.json",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=86400"
+            "value": "no-cache, no-store, must-revalidate"
           }
         ]
       }
