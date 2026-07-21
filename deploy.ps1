@@ -23,7 +23,7 @@ function Invoke-Firebase {
     if (Get-Command firebase -ErrorAction SilentlyContinue) {
         & firebase @Arguments
     } else {
-        Write-Host "   ('firebase' nao encontrado no PATH; usando 'npx firebase-tools')" -ForegroundColor DarkGray
+        Write-Host "   (firebase nao encontrado no PATH; usando npx firebase-tools)" -ForegroundColor DarkGray
         & npx firebase-tools @Arguments
     }
 }
@@ -41,7 +41,7 @@ function Assert-FirebaseLogin {
         Write-Host "Rode no PowerShell:" -ForegroundColor Yellow
         Write-Host "  firebase login --reauth" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "Use a conta Google que tem acesso ao projeto dofluxo-organizer." -ForegroundColor Yellow
+        Write-Host "Use a conta dofluxodigital@gmail.com (projeto dofluxo-organizer)." -ForegroundColor Yellow
         exit 1
     }
 
@@ -51,7 +51,8 @@ function Assert-FirebaseLogin {
         Write-Host ""
         Write-Host "A conta logada nao tem acesso ao projeto dofluxo-organizer." -ForegroundColor Red
         Write-Host "Rode:" -ForegroundColor Yellow
-        Write-Host "  firebase login --reauth" -ForegroundColor Yellow
+        Write-Host "  firebase logout" -ForegroundColor Yellow
+        Write-Host "  firebase login" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "Projetos visiveis para esta conta:" -ForegroundColor DarkGray
         Write-Host $projects
@@ -75,7 +76,7 @@ Write-Host ""
 # Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
 $pubspecDirty = git status --porcelain -- pubspec.yaml 2>$null
 if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
-    Write-Host ">> pubspec.yaml alterado localmente (deploy anterior?) — restaurando" -ForegroundColor Yellow
+    Write-Host ">> pubspec.yaml alterado localmente - restaurando versao do Git" -ForegroundColor Yellow
     git checkout -- pubspec.yaml
     Assert-LastExit "git checkout pubspec.yaml"
 }
@@ -142,7 +143,7 @@ Assert-LastExit "flutter pub get"
 
 # --- 5) flutter build web ----------------------------------------------------
 Write-Host ""
-Write-Host ">> flutter build web (release, versao=$newVersion)" -ForegroundColor Cyan
+Write-Host ">> flutter build web release $newVersion" -ForegroundColor Cyan
 flutter build web `
     --release `
     --pwa-strategy=none `
@@ -177,5 +178,5 @@ Write-Host " PRONTO - versao $newVersion no ar" -ForegroundColor Green
 Write-Host " https://dofluxo-organizer.web.app" -ForegroundColor Green
 Write-Host "=============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Abas abertas recebem aviso de atualizacao em ate ~5 s." -ForegroundColor DarkGray
+Write-Host "Abas abertas recebem aviso de atualizacao em ate 5 segundos." -ForegroundColor DarkGray
 Write-Host "Novas visitas carregam a versao publicada automaticamente." -ForegroundColor DarkGray
