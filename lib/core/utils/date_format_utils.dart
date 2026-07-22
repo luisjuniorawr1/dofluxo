@@ -44,20 +44,48 @@ abstract final class DateFormatUtils {
     return '$day/$month/${date.year}';
   }
 
+  /// Lê Timestamp / DateTime / dd/MM/yyyy / ISO / millis sem perder o dia do calendário.
   static DateTime? fromFirestore(dynamic value) {
-    if (value is Timestamp) return value.toDate();
-    if (value is DateTime) return value;
-    if (value is String && value.trim().isNotEmpty) {
-      return tryParseDayMonthYear(value.trim());
+    if (value == null) return null;
+
+    if (value is Timestamp) {
+      return dateOnly(value.toDate());
+    }
+    if (value is DateTime) {
+      return dateOnly(value.isUtc ? value.toLocal() : value);
+    }
+    if (value is int) {
+      // Heurística: segundos vs milissegundos.
+      final ms = value > 9999999999 ? value : value * 1000;
+      return dateOnly(DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal());
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      final br = tryParseDayMonthYear(trimmed);
+      if (br != null) return br;
+      final iso = DateTime.tryParse(trimmed);
+      if (iso != null) {
+        return dateOnly(iso.isUtc ? iso.toLocal() : iso);
+      }
+      return null;
+    }
+    if (value is Map) {
+      final seconds = value['_seconds'] ?? value['seconds'];
+      final nanos = value['_nanoseconds'] ?? value['nanoseconds'] ?? 0;
+      if (seconds is int) {
+        return fromFirestore(Timestamp(seconds, nanos is int ? nanos : 0));
+      }
     }
     return null;
   }
 
   /// Data de entrega/agendamento do projeto (mesma prioridade do card e do Kanban).
   static DateTime? projectDeliveryDate(Map<String, dynamic> data) {
-    final parsed = fromFirestore(data['expectedDeliveryDate']) ??
-        fromFirestore(data['scheduledDate']);
-    return parsed != null ? dateOnly(parsed) : null;
+    return fromFirestore(data['expectedDeliveryDate']) ??
+        fromFirestore(data['scheduledDate']) ??
+        fromFirestore(data['deliveryDate']) ??
+        fromFirestore(data['dueDate']);
   }
 
   static DateTime? tryParseDayMonthYear(String value) {
@@ -74,6 +102,10 @@ abstract final class DateFormatUtils {
 
   static Timestamp? toFirestoreTimestamp(DateTime? date) {
     if (date == null) return null;
-    return Timestamp.fromDate(DateTime(date.year, date.month, date.day));
+    // Meio-dia local: evita Timestamp em meia-noite UTC virar o dia anterior
+    // em fusos negativos ao arredondar.
+    return Timestamp.fromDate(
+      DateTime(date.year, date.month, date.day, 12),
+    );
   }
 }
