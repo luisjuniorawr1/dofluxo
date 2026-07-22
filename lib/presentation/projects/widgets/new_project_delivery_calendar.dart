@@ -322,6 +322,7 @@ class _MonthDayCell extends StatelessWidget {
 
     return Material(
       color: background,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -339,20 +340,44 @@ class _MonthDayCell extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  '$dayNumber',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isSelected
-                        ? scheme.onPrimaryContainer
-                        : scheme.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '$dayNumber',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isSelected
+                            ? scheme.onPrimaryContainer
+                            : scheme.onSurface,
+                      ),
+                    ),
+                    if (entries.isNotEmpty) ...[
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: entries.first.zoneHeaderColor ?? accent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${entries.length}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Expanded(
                   child: entries.isEmpty
                       ? const SizedBox.shrink()
-                      : Column(
+                      : ListView(
+                          padding: EdgeInsets.zero,
+                          physics: const NeverScrollableScrollPhysics(),
                           children: [
                             for (final entry in entries.take(2))
                               Padding(
@@ -360,14 +385,11 @@ class _MonthDayCell extends StatelessWidget {
                                 child: _KanbanMiniCard(entry: entry, dense: true),
                               ),
                             if (entries.length > 2)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  '+${entries.length - 2}',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                              Text(
+                                '+${entries.length - 2}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                           ],

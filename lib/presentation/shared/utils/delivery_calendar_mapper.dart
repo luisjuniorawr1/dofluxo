@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 
 import '../../../core/utils/date_format_utils.dart';
 import '../../dashboard/config/kanban_constants.dart';
@@ -19,7 +18,11 @@ class DeliveryCalendarMapper {
       final item = ProjectBoardItem.fromFirestore(doc.id, data);
       if (item.cardPrimaryTitle == 'Sem nome' && item.title.isEmpty) continue;
 
-      final deliveryDate = DateFormatUtils.projectDeliveryDate(data);
+      // Mesma data que o card do Kanban exibe (com fallback do label formatado).
+      final deliveryDate = DateFormatUtils.projectDeliveryDate(data) ??
+          (item.expectedDeliveryDate != null
+              ? DateFormatUtils.tryParseDayMonthYear(item.expectedDeliveryDate!)
+              : null);
       if (deliveryDate == null) continue;
 
       final zone = DashboardBoardMapper.workflowZoneForItem(data, item);
