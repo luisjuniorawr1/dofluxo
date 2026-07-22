@@ -15,4 +15,6 @@ void clearSkipUpdateOnce() {}
 
 void registerRevalidationTriggers(void Function() onTrigger) {}
 
+void stripReloadBustFromUrl() {}
+
 void reloadApp({String? acceptedVersion}) {}

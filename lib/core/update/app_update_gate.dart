@@ -33,6 +33,9 @@ class _AppUpdateGateState extends State<AppUpdateGate> {
     super.initState();
     if (!kIsWeb || !version_service.versionCheckSupported) return;
 
+    // Reload usa /?_r=ts para bust; limpa a barra sem nova navegação.
+    version_service.stripReloadBustFromUrl();
+
     if (kCompiledAppVersion.isNotEmpty) {
       _sessionVersion = kCompiledAppVersion.trim();
     }
