@@ -90,6 +90,7 @@ class TeamMemberTile extends StatelessWidget {
                         AppTagBadge.filled(
                           label: 'Você',
                           accent: scheme.primary,
+                          brightness: theme.brightness,
                         ),
                       RoleBadge(role: membership.role),
                     ],

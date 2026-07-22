@@ -93,6 +93,34 @@ void main() {
       );
     });
 
+    test('filledBadgeColors stays visible on dark card (gold + black brand)', () {
+      const gold = Color(0xFFFFD700);
+      const darkCard = Color(0xFF1C1C1C);
+      const blackBrand = Color(0xFF111111);
+
+      final goldBadge = ThemeUtils.filledBadgeColors(
+        gold,
+        brightness: Brightness.dark,
+      );
+      expect(
+        ThemeUtils.contrastRatio(goldBadge.background, darkCard),
+        greaterThan(3.0),
+      );
+      expect(
+        ThemeUtils.contrastRatio(goldBadge.foreground, goldBadge.background),
+        greaterThanOrEqualTo(4.5),
+      );
+
+      final darkBrandBadge = ThemeUtils.filledBadgeColors(
+        blackBrand,
+        brightness: Brightness.dark,
+      );
+      expect(
+        ThemeUtils.contrastRatio(darkBrandBadge.background, darkCard),
+        greaterThan(1.45),
+      );
+    });
+
     test('tintedBadgeColors lifts grey accent off dark card', () {
       const grey = Color(0xFF9E9E9E);
       const darkSurface = Color(0xFF1C1C1C);

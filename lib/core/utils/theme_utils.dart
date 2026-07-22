@@ -70,8 +70,16 @@ class ThemeUtils {
   /// Tag preenchida com a cor de destaque (sempre “aparece” no card).
   ///
   /// Use para badges de marca/papel em qualquer página (claro/escuro).
-  static ({Color background, Color foreground}) filledBadgeColors(Color accent) {
-    return (background: accent, foreground: getContrastColor(accent));
+  /// No dark, marcas muito escuras são clareadas para a pill não sumir.
+  static ({Color background, Color foreground}) filledBadgeColors(
+    Color accent, {
+    Brightness? brightness,
+  }) {
+    var background = accent.withValues(alpha: 1);
+    if (brightness == Brightness.dark && background.computeLuminance() < 0.22) {
+      background = Color.lerp(background, Colors.white, 0.42)!;
+    }
+    return (background: background, foreground: getContrastColor(background));
   }
 
   /// Fundo + texto de badge tingido pela cor de destaque, com contraste ≥ 4.5.

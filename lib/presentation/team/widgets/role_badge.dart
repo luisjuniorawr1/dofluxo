@@ -10,12 +10,14 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return switch (role) {
       AgencyRole.owner => AppTagBadge.filled(
           label: role.label,
           accent: scheme.primary,
+          brightness: theme.brightness,
         ),
       AgencyRole.admin => AppTagBadge(
           label: role.label,
