@@ -123,6 +123,38 @@ function Ensure-GitEditor {
     }
 }
 
+# Deixa o main local identico ao GitHub (resolve diverge / index sujo sozinho).
+function Sync-MainFromOrigin {
+    Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
+    $code = Invoke-Git @("fetch", "--prune", "origin")
+    if ($code -ne 0) { Assert-LastExit "git fetch --prune origin" }
+
+    $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ($currentBranch -ne "main") {
+        Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
+        $code = Invoke-Git @("checkout", "main")
+        if ($code -ne 0) { Assert-LastExit "git checkout main" }
+    }
+
+    # Cancela merge/rebase pela metade, se houver.
+    if (Test-Path (Join-Path (Join-Path $PSScriptRoot ".git") "MERGE_HEAD")) {
+        Write-Host ">> cancelando merge incompleto..." -ForegroundColor Yellow
+        $null = Invoke-Git @("merge", "--abort")
+    }
+    if (Test-Path (Join-Path (Join-Path $PSScriptRoot ".git") "rebase-merge")) {
+        Write-Host ">> cancelando rebase incompleto..." -ForegroundColor Yellow
+        $null = Invoke-Git @("rebase", "--abort")
+    }
+    if (Test-Path (Join-Path (Join-Path $PSScriptRoot ".git") "rebase-apply")) {
+        Write-Host ">> cancelando rebase incompleto..." -ForegroundColor Yellow
+        $null = Invoke-Git @("rebase", "--abort")
+    }
+
+    Write-Host ">> alinhando main local com origin/main..." -ForegroundColor Cyan
+    $code = Invoke-Git @("reset", "--hard", "origin/main")
+    if ($code -ne 0) { Assert-LastExit "git reset --hard origin/main" }
+}
+
 Write-Host ""
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host " DOFLUXO - publicar (tudo em um comando)" -ForegroundColor Cyan
@@ -132,55 +164,10 @@ Write-Host ""
 Ensure-GitIdentity
 Ensure-GitEditor
 
-# Merge incompleto bloqueia pull/deploy - limpa automatico se sobrou de tentativa anterior.
-$gitDir = Join-Path $PSScriptRoot ".git"
-if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
-    Write-Host ">> merge incompleto detectado - cancelando para liberar o deploy" -ForegroundColor Yellow
-    git merge --abort
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERRO: nao consegui cancelar o merge incompleto." -ForegroundColor Red
-        Write-Host "Rode: git merge --abort" -ForegroundColor Yellow
-        Write-Host "Depois: .\deploy.ps1" -ForegroundColor Yellow
-        exit 1
-    }
-}
-
-# Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
-$pubspecDirty = git status --porcelain -- pubspec.yaml 2>$null
-if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
-    Write-Host ">> pubspec.yaml alterado localmente - restaurando versao do Git" -ForegroundColor Yellow
-    git checkout -- pubspec.yaml
-    Assert-LastExit "git checkout pubspec.yaml"
-}
-
 # --- 1) Atualizar do GitHub --------------------------------------------------
-# Na 1a passagem: fetch/prune + pull, depois REINICIA o script ja atualizado.
+# Na 1a passagem: sincroniza main, depois REINICIA o script ja atualizado.
 if (-not $env:DOFLUXO_DEPLOY_RELOADED) {
-    Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
-    git fetch --prune origin
-    Assert-LastExit "git fetch --prune origin"
-
-    $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
-    if ($currentBranch -ne "main") {
-        Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
-        git checkout main
-        Assert-LastExit "git checkout main"
-    }
-
-    Write-Host ">> git pull origin main" -ForegroundColor Cyan
-    git pull --ff-only origin main
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "   ff-only falhou; tentando git pull --rebase..." -ForegroundColor DarkGray
-        git pull --rebase origin main
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host ""
-            Write-Host "ERRO no git pull. Resolva o estado do Git e tente de novo:" -ForegroundColor Red
-            Write-Host "  git merge --abort" -ForegroundColor Yellow
-            Write-Host "  git pull --rebase origin main" -ForegroundColor Yellow
-            Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
-            exit $LASTEXITCODE
-        }
-    }
+    Sync-MainFromOrigin
 
     Write-Host ">> reiniciando deploy com o script atualizado..." -ForegroundColor DarkGray
     $env:DOFLUXO_DEPLOY_RELOADED = "1"
@@ -189,26 +176,15 @@ if (-not $env:DOFLUXO_DEPLOY_RELOADED) {
 }
 
 Write-Host ">> confirmando main atualizado..." -ForegroundColor Cyan
-$currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
-if ($currentBranch -ne "main") {
-    Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
-    git checkout main
-    Assert-LastExit "git checkout main"
-}
-
-git pull --ff-only origin main
-if ($LASTEXITCODE -ne 0) {
-    git pull --rebase origin main
-    Assert-LastExit "git pull origin main"
-}
+Sync-MainFromOrigin
 
 # --- 2) Commit automatico de mudancas locais (se houver) ---------------------
-git add -A
+$null = Invoke-Git @("add", "-A")
 $status = git status --porcelain
 if ($status) {
     Write-Host ">> commit de mudancas locais pendentes" -ForegroundColor Cyan
-    git commit -m "chore: sync antes do deploy"
-    Assert-LastExit "git commit (sync)"
+    $code = Invoke-Git @("commit", "-m", "chore: sync antes do deploy")
+    if ($code -ne 0) { Assert-LastExit "git commit (sync)" }
 } else {
     Write-Host ">> sem mudancas locais pendentes" -ForegroundColor DarkGray
 }
