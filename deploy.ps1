@@ -71,6 +71,27 @@ function Assert-LastExit([string]$step) {
     }
 }
 
+# Git escreve warnings (CRLF) no stderr; com ErrorAction Stop o PowerShell trata como erro.
+function Invoke-Git {
+    param([Parameter(Mandatory = $true)][string[]]$GitArgs)
+
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & git @GitArgs 2>&1 | ForEach-Object {
+            $line = "$_"
+            if ($line -match '^warning:') {
+                Write-Host $line -ForegroundColor DarkGray
+            } elseif ($line.Trim().Length -gt 0) {
+                Write-Host $line
+            }
+        }
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
+}
+
 function Ensure-GitIdentity {
     $email = git config user.email
     $name = git config user.name
@@ -257,17 +278,21 @@ if ($deployResult.ExitCode -ne 0) {
 # --- 7) commit + push da versao ----------------------------------------------
 Write-Host ""
 Write-Host ">> git commit + push da versao $newVersion" -ForegroundColor Cyan
-git add pubspec.yaml
-if (Test-Path (Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache")) {
-    git add ".firebase/hosting.YnVpbGRcd2Vi.cache" 2>$null
+$code = Invoke-Git @("add", "pubspec.yaml")
+if ($code -ne 0) { Assert-LastExit "git add pubspec.yaml" }
+
+$cachePath = Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache"
+if (Test-Path $cachePath) {
+    $null = Invoke-Git @("add", ".firebase/hosting.YnVpbGRcd2Vi.cache")
 }
+
 $pending = git status --porcelain
 if ($pending) {
-    git commit -m "release: $newVersion"
-    Assert-LastExit "git commit (release)"
+    $code = Invoke-Git @("commit", "-m", "release: $newVersion")
+    if ($code -ne 0) { Assert-LastExit "git commit (release)" }
 }
-git push origin main
-Assert-LastExit "git push"
+$code = Invoke-Git @("push", "origin", "main")
+if ($code -ne 0) { Assert-LastExit "git push" }
 
 Write-Host ""
 Write-Host "=============================================================" -ForegroundColor Green
