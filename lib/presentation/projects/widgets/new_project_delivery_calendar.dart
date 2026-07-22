@@ -28,12 +28,20 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
   static const _weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   late DateTime _focusedMonth;
+  Stream<QuerySnapshot>? _projectsStream;
 
   @override
   void initState() {
     super.initState();
     final seed = widget.selectedDay ?? DateTime.now();
     _focusedMonth = DateTime(seed.year, seed.month);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Uma assinatura por abertura do dialog — evita recriar a query a cada setState.
+    _projectsStream ??= context.read<ProjectService>().getProjectsStream();
   }
 
   @override
@@ -70,11 +78,47 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
     final scheme = theme.colorScheme;
 
     return StreamBuilder<QuerySnapshot>(
-      stream: context.read<ProjectService>().getProjectsStream(),
+      stream: _projectsStream,
       builder: (context, snapshot) {
-        final grouped = snapshot.hasData
-            ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)
-            : <DateTime, List<CalendarDeliveryEntry>>{};
+        if (snapshot.hasError) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outline),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Não foi possível carregar as entregas do calendário.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.error,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outline),
+            ),
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+
+        final grouped = DeliveryCalendarMapper.fromSnapshot(snapshot.data!);
         final monthCount =
             DeliveryCalendarMapper.countInMonth(grouped, _focusedMonth);
         final selected = widget.selectedDay == null

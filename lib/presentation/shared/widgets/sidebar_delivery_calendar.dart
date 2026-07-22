@@ -27,6 +27,7 @@ class SidebarDeliveryCalendar extends StatefulWidget {
 class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
   late DateTime _focusedMonth;
   DateTime? _selectedDay;
+  Stream<QuerySnapshot>? _projectsStream;
 
   @override
   void initState() {
@@ -34,6 +35,12 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
     final now = DateTime.now();
     _focusedMonth = DateTime(now.year, now.month);
     _selectedDay = DateFormatUtils.dateOnly(now);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _projectsStream ??= context.read<ProjectService>().getProjectsStream();
   }
 
   void _goToPreviousMonth() {
@@ -74,7 +81,7 @@ class _SidebarDeliveryCalendarState extends State<SidebarDeliveryCalendar> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: context.read<ProjectService>().getProjectsStream(),
+      stream: _projectsStream,
       builder: (context, snapshot) {
         final grouped = snapshot.hasData
             ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)

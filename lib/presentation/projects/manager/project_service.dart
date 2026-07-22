@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,7 +14,10 @@ class ProjectService {
   FirebaseFirestore get _db => FirebaseFirestore.instance;
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
-  Stream<QuerySnapshot>? _projectsStreamCache;
+  StreamController<QuerySnapshot>? _projectsController;
+  StreamSubscription<QuerySnapshot>? _projectsSubscription;
+  Stream<QuerySnapshot>? _projectsViewStream;
+  QuerySnapshot? _lastProjectsSnapshot;
   String? _projectsStreamAgencyId;
 
   Future<String?> addProject(Map<String, dynamic> projectData) async {
@@ -60,6 +65,10 @@ class ProjectService {
   }
 
   /// Stream compartilhado de projetos da agência ativa (uma query Firestore).
+  ///
+  /// Replays o último snapshot para listeners tardios (ex.: calendário no
+  /// dialog "Novo Projeto"). `asBroadcastStream()` sem replay deixava o
+  /// calendário vazio até o próximo write no Firestore.
   Stream<QuerySnapshot> getProjectsStream() {
     try {
       if (_auth.currentUser == null || agencyId.isEmpty) {
@@ -67,21 +76,52 @@ class ProjectService {
         return const Stream.empty();
       }
 
-      if (_projectsStreamCache != null && _projectsStreamAgencyId == agencyId) {
-        return _projectsStreamCache!;
-      }
-
-      _projectsStreamAgencyId = agencyId;
-      _projectsStreamCache = _db
-          .collection('projects')
-          .where('agencyId', isEqualTo: agencyId)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .asBroadcastStream();
-      return _projectsStreamCache!;
+      _ensureProjectsBroadcast();
+      return _projectsViewStream!;
     } catch (_) {
+      // Ex.: testes sem Firebase.initializeApp().
       return const Stream.empty();
     }
+  }
+
+  void _ensureProjectsBroadcast() {
+    if (_projectsViewStream != null && _projectsStreamAgencyId == agencyId) {
+      return;
+    }
+
+    _clearProjectsStreamCache();
+    _projectsStreamAgencyId = agencyId;
+    _projectsController = StreamController<QuerySnapshot>.broadcast();
+    _projectsViewStream = Stream.multi((listener) {
+      final last = _lastProjectsSnapshot;
+      if (last != null) {
+        listener.add(last);
+      }
+      final sub = _projectsController!.stream.listen(
+        listener.add,
+        onError: listener.addError,
+        onDone: listener.close,
+      );
+      listener.onCancel = sub.cancel;
+    });
+    _projectsSubscription = _db
+        .collection('projects')
+        .where('agencyId', isEqualTo: agencyId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            _lastProjectsSnapshot = snapshot;
+            if (!(_projectsController?.isClosed ?? true)) {
+              _projectsController!.add(snapshot);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!(_projectsController?.isClosed ?? true)) {
+              _projectsController!.addError(error, stackTrace);
+            }
+          },
+        );
   }
 
   void dispose() {
@@ -89,7 +129,12 @@ class ProjectService {
   }
 
   void _clearProjectsStreamCache() {
-    _projectsStreamCache = null;
+    _projectsSubscription?.cancel();
+    _projectsSubscription = null;
+    _projectsController?.close();
+    _projectsController = null;
+    _projectsViewStream = null;
+    _lastProjectsSnapshot = null;
     _projectsStreamAgencyId = null;
   }
 }
