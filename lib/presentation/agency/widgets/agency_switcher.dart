@@ -38,7 +38,7 @@ class AgencySwitcher extends StatelessWidget {
     }
 
     final activeId = agencyContext.activeAgencyId;
-    final muted = onPrimary.withValues(alpha: 0.75);
+    final muted = onPrimary.withValues(alpha: 0.9);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),

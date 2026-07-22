@@ -199,14 +199,14 @@ class _MainShellState extends State<MainShell> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: selected ? onPrimary : onPrimary.withValues(alpha: 0.7)),
+            Icon(icon, size: 18, color: selected ? onPrimary : onPrimary.withValues(alpha: 0.9)),
             const SizedBox(width: 10),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: selected ? onPrimary : onPrimary.withValues(alpha: 0.7),
+                color: selected ? onPrimary : onPrimary.withValues(alpha: 0.9),
               ),
             ),
           ],

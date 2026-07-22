@@ -211,7 +211,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Icon(
             Icons.filter_alt_off_outlined,
             size: 48,
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 12),
           Text(

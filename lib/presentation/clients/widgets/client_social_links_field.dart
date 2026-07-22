@@ -161,16 +161,28 @@ class _PlatformBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = ThemeUtils.brandColor(context, platform.color);
+    final theme = Theme.of(context);
+    final accent = ThemeUtils.brandColor(context, platform.color);
+    final tinted = ThemeUtils.tintedBadgeColors(
+      accent: accent,
+      surface: theme.colorScheme.surfaceContainerLow,
+      brightness: theme.brightness,
+    );
 
     return Container(
       width: compact ? 28 : 36,
       height: compact ? 28 : 36,
       decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.14),
+        color: tinted.background,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Color.alphaBlend(
+            tinted.foreground.withValues(alpha: 0.22),
+            tinted.background,
+          ),
+        ),
       ),
-      child: Icon(platform.icon, size: compact ? 16 : 20, color: iconColor),
+      child: Icon(platform.icon, size: compact ? 16 : 20, color: tinted.foreground),
     );
   }
 }

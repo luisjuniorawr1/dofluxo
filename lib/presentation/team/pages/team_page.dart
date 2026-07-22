@@ -298,7 +298,7 @@ class _TeamPageState extends State<TeamPage> {
                         Icon(
                           Icons.people_outline,
                           size: 48,
-                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(height: 12),
                         Text(

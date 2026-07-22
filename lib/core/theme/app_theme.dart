@@ -18,11 +18,12 @@ class AppTheme {
     );
 
     // Texto principal e secundário com contraste forte nos dois temas.
-    final onSurface = isDark ? const Color(0xFFF2F2F2) : const Color(0xFF141414);
-    final onSurfaceVariant = isDark ? const Color(0xFFCFCFCF) : const Color(0xFF454545);
+    final onSurface = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
+    // Secundário: legível em cards (não “cinza fantasma”).
+    final onSurfaceVariant = isDark ? const Color(0xFFE2E2E2) : const Color(0xFF3A3A3A);
     final surface = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
     final surfaceContainerHighest =
-        isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD6D6D6);
+        isDark ? const Color(0xFF454545) : const Color(0xFFD0D0D0);
 
     final onBrand = ThemeUtils.getContrastColor(primaryColor);
     final contentAccent = ThemeUtils.readableAccent(
@@ -38,21 +39,20 @@ class AppTheme {
       minRatio: 4.5,
     );
 
-    final primaryContainer = Color.alphaBlend(
-      primaryColor.withValues(alpha: isDark ? 0.38 : 0.24),
-      isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFFFFF),
-    );
-    final onPrimaryContainer = ThemeUtils.readableAccent(
-      accent: primaryColor,
-      background: primaryContainer,
-      fallback: ThemeUtils.getContrastColor(primaryContainer),
-      minRatio: 4.5,
-    );
+    // Containers de marca bem visíveis em qualquer página (chips, avatares, tags).
+    final primaryContainerBase = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFFFFFF);
+    final primaryContainer = Color.lerp(
+      primaryContainerBase,
+      primaryColor,
+      isDark ? 0.72 : 0.75,
+    )!;
+    final onPrimaryContainer = ThemeUtils.getContrastColor(primaryContainer);
 
+    final secondary = isDark ? const Color(0xFFB8C7D6) : const Color(0xFF2A3A4A);
     final secondaryContainer =
-        isDark ? const Color(0xFF2F3B48) : const Color(0xFFD8E2EC);
+        isDark ? const Color(0xFF455A6E) : const Color(0xFFC9D7E6);
     final onSecondaryContainer =
-        isDark ? const Color(0xFFE3EDF7) : const Color(0xFF152433);
+        isDark ? const Color(0xFFF0F6FC) : const Color(0xFF102033);
 
     final tertiaryContainer =
         isDark ? const Color(0xFF3A342C) : const Color(0xFFEDE4D6);
@@ -64,6 +64,8 @@ class AppTheme {
       onPrimary: onBrand,
       primaryContainer: primaryContainer,
       onPrimaryContainer: onPrimaryContainer,
+      secondary: secondary,
+      onSecondary: ThemeUtils.getContrastColor(secondary),
       secondaryContainer: secondaryContainer,
       onSecondaryContainer: onSecondaryContainer,
       tertiaryContainer: tertiaryContainer,
@@ -116,9 +118,6 @@ class AppTheme {
       borderSide: BorderSide(color: colorScheme.outline),
     );
 
-    final chipBackground = colorScheme.surfaceContainerHigh;
-    final chipLabelColor = colorScheme.onSurface;
-
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -164,7 +163,8 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: isDark ? 0.55 : 0.45),
+        // Opaco: alpha no fill lava labels/hints nos dois temas.
+        fillColor: colorScheme.surfaceContainerHigh,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: TextStyle(
           color: colorScheme.onSurfaceVariant,
@@ -196,21 +196,40 @@ class AppTheme {
         thickness: 1,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: chipBackground,
-        selectedColor: primaryContainer,
+        // Fundo opaco + borda: chips Material legíveis em qualquer página.
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        selectedColor: primaryColor,
+        // ChoiceChip usa secondary* no estado selecionado.
+        secondarySelectedColor: primaryColor,
         disabledColor: colorScheme.surfaceContainer,
         labelStyle: TextStyle(
-          color: chipLabelColor,
+          color: colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
         secondaryLabelStyle: TextStyle(
-          color: onPrimaryContainer,
+          color: onBrand,
           fontWeight: FontWeight.w700,
         ),
         deleteIconColor: colorScheme.onSurfaceVariant,
-        side: BorderSide(color: colorScheme.outlineVariant),
-        checkmarkColor: onPrimaryContainer,
+        side: BorderSide(color: colorScheme.outline),
+        checkmarkColor: onBrand,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return onBrand;
+            return colorScheme.onSurface;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return primaryColor;
+            return colorScheme.surfaceContainerHigh;
+          }),
+          side: WidgetStateProperty.all(BorderSide(color: colorScheme.outline)),
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: colorScheme.surfaceContainerLow,

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/agency/models/agency_role.dart';
 import '../../../core/agency/models/membership.dart';
 import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/theme_utils.dart';
+import '../../shared/widgets/app_tag_badge.dart';
 import 'role_badge.dart';
 
 class TeamMemberTile extends StatelessWidget {
@@ -46,12 +48,12 @@ class TeamMemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final joinedLabel = _joinedLabel;
-
     return Material(
       color: isCurrentUser
-          ? theme.colorScheme.surfaceContainerLow
-          : theme.colorScheme.surface,
+          ? scheme.surfaceContainerLow
+          : scheme.surface,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -60,7 +62,12 @@ class TeamMemberTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 20,
-              child: Text(_initial),
+              backgroundColor: scheme.primaryContainer,
+              foregroundColor: scheme.onPrimaryContainer,
+              child: Text(
+                _initial,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -76,22 +83,14 @@ class TeamMemberTile extends StatelessWidget {
                         _displayName,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
                         ),
                       ),
                       if (isCurrentUser)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            'Você',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        AppTagBadge.filled(
+                          label: 'Você',
+                          accent: scheme.primary,
+                          brightness: theme.brightness,
                         ),
                       RoleBadge(role: membership.role),
                     ],
@@ -100,18 +99,14 @@ class TeamMemberTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       membership.userEmail,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: ThemeUtils.bodyMuted(context),
                     ),
                   ],
                   if (joinedLabel != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       'Desde $joinedLabel',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: ThemeUtils.bodyMuted(context),
                     ),
                   ],
                 ],

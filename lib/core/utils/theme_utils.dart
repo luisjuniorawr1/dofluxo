@@ -67,23 +67,44 @@ class ThemeUtils {
     );
   }
 
+  /// Tag preenchida com a cor de destaque (sempre “aparece” no card).
+  ///
+  /// Use para badges de marca/papel em qualquer página (claro/escuro).
+  /// No dark, marcas muito escuras são clareadas para a pill não sumir.
+  static ({Color background, Color foreground}) filledBadgeColors(
+    Color accent, {
+    Brightness? brightness,
+  }) {
+    var background = accent.withValues(alpha: 1);
+    if (brightness == Brightness.dark && background.computeLuminance() < 0.22) {
+      background = Color.lerp(background, Colors.white, 0.42)!;
+    }
+    return (background: background, foreground: getContrastColor(background));
+  }
+
   /// Fundo + texto de badge tingido pela cor de destaque, com contraste ≥ 4.5.
+  ///
+  /// Garante também contraste mínimo do chip contra a superfície do card,
+  /// para não virar “cinza fantasma” no dark (ou lavado no light).
   static ({Color background, Color foreground}) tintedBadgeColors({
     required Color accent,
     required Color surface,
     required Brightness brightness,
     double minRatio = 4.5,
+    double minSurfaceContrast = 1.45,
   }) {
-    final background = Color.alphaBlend(
-      accent.withValues(alpha: brightness == Brightness.dark ? 0.34 : 0.22),
-      surface,
-    );
-    final foreground = readableAccent(
-      accent: accent,
-      background: background,
-      fallback: getContrastColor(background),
-      minRatio: minRatio,
-    );
+    var mix = brightness == Brightness.dark ? 0.88 : 0.72;
+    var background = Color.lerp(surface, accent, mix)!;
+
+    while (contrastRatio(background, surface) < minSurfaceContrast && mix < 1.0) {
+      mix = (mix + 0.06).clamp(0.0, 1.0);
+      background = Color.lerp(surface, accent, mix)!;
+    }
+
+    var foreground = getContrastColor(background);
+    if (contrastRatio(foreground, background) < minRatio) {
+      foreground = background.computeLuminance() > 0.35 ? Colors.black : Colors.white;
+    }
     return (background: background, foreground: foreground);
   }
 
