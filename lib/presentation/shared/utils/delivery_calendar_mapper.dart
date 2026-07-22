@@ -13,7 +13,8 @@ class DeliveryCalendarMapper {
 
     for (final doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>? ?? {};
-      final deliveryDate = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']);
+      final deliveryDate = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']) ??
+          DateFormatUtils.fromFirestore(data['scheduledDate']);
       final title = (data['title'] as String?)?.trim() ?? '';
       if (deliveryDate == null || title.isEmpty) continue;
 
