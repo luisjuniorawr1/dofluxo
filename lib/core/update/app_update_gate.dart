@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../utils/theme_utils.dart';
 import 'app_update_logic.dart';
 import 'app_version.dart';
 import 'app_version_service.dart' as version_service;
