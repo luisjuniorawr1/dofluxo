@@ -134,9 +134,44 @@ if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
 }
 
 # --- 1) Atualizar do GitHub + correcoes do Cursor ----------------------------
-Write-Host ">> git fetch origin" -ForegroundColor Cyan
-git fetch origin
-Assert-LastExit "git fetch origin"
+# Na 1a passagem: fetch/prune + pull, depois REINICIA o script atualizado.
+# Assim voce sempre roda a versao nova do deploy.ps1 sem git pull manual.
+if (-not $env:DOFLUXO_DEPLOY_RELOADED) {
+    Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
+    git fetch --prune origin
+    Assert-LastExit "git fetch --prune origin"
+
+    $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ($currentBranch -ne "main") {
+        Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
+        git checkout main
+        Assert-LastExit "git checkout main"
+    }
+
+    Write-Host ">> git pull origin main" -ForegroundColor Cyan
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   ff-only falhou; tentando git pull --rebase..." -ForegroundColor DarkGray
+        git pull --rebase origin main
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Host "ERRO no git pull. Resolva o estado do Git e tente de novo:" -ForegroundColor Red
+            Write-Host "  git merge --abort" -ForegroundColor Yellow
+            Write-Host "  git pull --rebase origin main" -ForegroundColor Yellow
+            Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
+            exit $LASTEXITCODE
+        }
+    }
+
+    Write-Host ">> reiniciando deploy com o script atualizado..." -ForegroundColor DarkGray
+    $env:DOFLUXO_DEPLOY_RELOADED = "1"
+    & powershell -ExecutionPolicy Bypass -File $PSCommandPath @args
+    exit $LASTEXITCODE
+}
+
+Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
+git fetch --prune origin
+Assert-LastExit "git fetch --prune origin"
 
 $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
 if ($currentBranch -ne "main") {
@@ -164,11 +199,19 @@ if ($LASTEXITCODE -ne 0) {
 # Branches antigas (muito atrasadas em relacao ao main) sao ignoradas —
 # mesclar elas causa conflito e nao e o que voce quer no deploy.
 Write-Host ">> buscando correcoes pendentes do Cursor (origin/cursor/*)..." -ForegroundColor Cyan
-$cursorBranches = @(git branch -r --list "origin/cursor/*" | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne "" })
+$cursorBranches = @(
+    git branch -r --list "origin/cursor/*" |
+        ForEach-Object { $_.ToString().Trim() } |
+        Where-Object { $_ -ne "" -and $_ -notmatch '^\s*$' }
+)
 $mergedAny = $false
 $maxBehindToMerge = 20
 
 foreach ($remoteBranch in $cursorBranches) {
+    # Confirma que a ref ainda existe no remoto (apos --prune).
+    $exists = (git show-ref --verify --quiet "refs/remotes/$remoteBranch"; $LASTEXITCODE -eq 0)
+    if (-not $exists) { continue }
+
     $aheadText = (git rev-list --count "main..$remoteBranch" 2>$null | Out-String).Trim()
     $behindText = (git rev-list --count "$remoteBranch..main" 2>$null | Out-String).Trim()
     $ahead = 0
@@ -187,7 +230,6 @@ foreach ($remoteBranch in $cursorBranches) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "   conflito em $remoteBranch — pulando e seguindo o deploy" -ForegroundColor Yellow
         git merge --abort 2>$null
-        # Garante working tree limpa apos abort.
         if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
             git merge --abort 2>$null
         }
