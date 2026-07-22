@@ -121,6 +121,28 @@ void main() {
       );
     });
 
+    test('member/admin solid accents stay visible on dark card', () {
+      const darkCard = Color(0xFF1C1C1C);
+      const memberAccent = Color(0xFFC2C2C2);
+      const adminAccent = Color(0xFFB8C7D6);
+
+      for (final accent in [memberAccent, adminAccent]) {
+        final badge = ThemeUtils.filledBadgeColors(
+          accent,
+          brightness: Brightness.dark,
+        );
+        expect(
+          ThemeUtils.contrastRatio(badge.background, darkCard),
+          greaterThan(2.5),
+          reason: 'accent $accent must pop from dark card',
+        );
+        expect(
+          ThemeUtils.contrastRatio(badge.foreground, badge.background),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    });
+
     test('tintedBadgeColors lifts grey accent off dark card', () {
       const grey = Color(0xFF9E9E9E);
       const darkSurface = Color(0xFF1C1C1C);

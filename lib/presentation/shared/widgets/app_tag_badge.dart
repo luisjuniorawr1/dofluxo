@@ -38,17 +38,17 @@ class AppTagBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Borda opaca (lerp) — alpha em cima do card dark some com facilidade.
+    final borderColor = Color.lerp(background, foreground, 0.45)!;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: foreground.withValues(alpha: 0.4),
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.4),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
