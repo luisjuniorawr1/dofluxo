@@ -190,7 +190,10 @@ class _UpdateBanner extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.system_update_alt_outlined,
-                    color: colorScheme.primary,
+                    color: ThemeUtils.contentAccent(
+                      context,
+                      background: colorScheme.inverseSurface,
+                    ),
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -211,7 +214,8 @@ class _UpdateBanner extends StatelessWidget {
                           'Atualizar quando quiser. Depois disso, o app '
                           'será atualizado automaticamente.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onInverseSurface.withValues(alpha: 0.85),
+                            color: colorScheme.onInverseSurface,
+                            fontWeight: FontWeight.w500,
                             height: 1.35,
                           ),
                         ),
@@ -219,15 +223,19 @@ class _UpdateBanner extends StatelessWidget {
                         Text(
                           'Atualização automática em $countdown',
                           style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            color: ThemeUtils.contentAccent(
+                              context,
+                              background: colorScheme.inverseSurface,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Salve formulários abertos antes de atualizar.',
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onInverseSurface.withValues(alpha: 0.65),
+                            color: colorScheme.onInverseSurface,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],

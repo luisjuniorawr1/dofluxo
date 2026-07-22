@@ -80,6 +80,9 @@ class AppTheme {
       surfaceContainerHighest: surfaceContainerHighest,
       outline: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF5F5F5F),
       outlineVariant: isDark ? const Color(0xFF555555) : const Color(0xFFB0B0B0),
+      // SnackBar / banner de update usam inverse* — seed pode gerar preto-no-preto.
+      inverseSurface: isDark ? const Color(0xFFE8E8E8) : const Color(0xFF2C2C2C),
+      onInverseSurface: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
     );
 
     final agencyColors = AgencyThemeColors(
@@ -243,39 +246,44 @@ class AppTheme {
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? colorScheme.surfaceContainerHighest : const Color(0xFF323232),
-        contentTextStyle: TextStyle(
-          color: isDark ? colorScheme.onSurface : Colors.white,
+        // Fundo sempre escuro o bastante + texto branco (vale em error SnackBars também).
+        backgroundColor: const Color(0xFF2C2C2C),
+        contentTextStyle: const TextStyle(
+          color: Color(0xFFF5F5F5),
           fontWeight: FontWeight.w500,
         ),
-        actionTextColor: isDark ? contentAccent : Colors.white,
+        actionTextColor: contentAccent,
         behavior: SnackBarBehavior.floating,
       ),
       checkboxTheme: CheckboxThemeData(
-        // Unselected: borda = onSurface (preta no light / clara no dark) — nunca some.
+        // Unselected: borda branca/preta explícita (não depende de outline fraco).
         // Selected: fill da marca + ✓ com contraste (onBrand).
         checkColor: WidgetStateProperty.all(onBrand),
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primaryColor;
-          return Colors.transparent;
+          // Fill leve pra a caixa existir como bloco, não só linha.
+          return isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFFFFF);
         }),
         side: WidgetStateBorderSide.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return BorderSide(width: 2, color: primaryColor);
+            return BorderSide(width: 2.5, color: primaryColor);
           }
-          return BorderSide(width: 2, color: colorScheme.onSurface);
+          return BorderSide(
+            width: 2.5,
+            color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212),
+          );
         }),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return contentAccent;
-          return colorScheme.onSurface;
+          return isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
         }),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return onBrand;
-          return colorScheme.onSurface;
+          return isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primaryColor;
@@ -283,7 +291,7 @@ class AppTheme {
         }),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primaryColor;
-          return colorScheme.onSurface;
+          return isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
