@@ -113,17 +113,25 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     final scheme = theme.colorScheme;
     final media = MediaQuery.sizeOf(context);
     final isWide = media.width >= 900;
-    final maxHeight = media.height * 0.92;
+    final maxHeight = media.height * 0.94;
+    // Quase full-bleed: células do calendário ficam mais largas p/ o nome do card.
+    final dialogWidth = isWide
+        ? (media.width - 24).clamp(1100.0, 1680.0)
+        : 560.0;
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isWide ? 12 : 16,
+        vertical: 12,
+      ),
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: isWide ? 1200 : 560,
+          maxWidth: dialogWidth,
           maxHeight: maxHeight,
+          minWidth: isWide ? dialogWidth : 0,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
@@ -134,21 +142,21 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
               children: [
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     child: isWide
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Expanded(
-                                flex: 6,
+                                flex: 7,
                                 child: NewProjectDeliveryCalendar(
                                   selectedDay: _calendarSelectedDay,
                                   onDaySelected: _onCalendarDaySelected,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 12),
                               Expanded(
-                                flex: 5,
+                                flex: 4,
                                 child: _buildFormPanel(theme, scheme),
                               ),
                             ],
