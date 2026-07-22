@@ -91,7 +91,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
             border: Border.all(color: scheme.outline),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -203,10 +203,10 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const gap = 5.0;
+        const gap = 4.0;
         final rawHeight = (constraints.maxHeight - gap * (rows - 1)) / rows;
         // Células altas o bastante para mini-cards do Kanban.
-        final cellHeight = rawHeight.clamp(108.0, 168.0);
+        final cellHeight = rawHeight.clamp(112.0, 180.0);
 
         return GridView.builder(
           physics: const BouncingScrollPhysics(),
@@ -445,16 +445,16 @@ class _KanbanMiniCard extends StatelessWidget {
               children: [
                 Text(
                   entry.cardTitle,
-                  maxLines: dense ? 1 : 2,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: const Color(0xFF1A1A1A),
                     fontWeight: FontWeight.w800,
-                    fontSize: dense ? 10 : 12,
+                    fontSize: dense ? 11 : 12,
                     height: 1.2,
                   ),
                 ),
-                if (!dense && subtitle != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
@@ -463,7 +463,7 @@ class _KanbanMiniCard extends StatelessWidget {
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: const Color(0xFF1A1A1A).withValues(alpha: 0.65),
                       fontWeight: FontWeight.w600,
-                      fontSize: 10,
+                      fontSize: dense ? 9 : 10,
                     ),
                   ),
                 ],
