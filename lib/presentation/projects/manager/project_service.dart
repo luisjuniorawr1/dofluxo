@@ -63,7 +63,7 @@ class ProjectService {
   /// o snapshot atual dos documentos. O broadcast antigo sem replay fazia o
   /// calendário abrir vazio depois do dashboard.
   ///
-  /// Quien assina deve guardar o [Stream] no State (não recriar a cada build).
+  /// Quem assina deve guardar o [Stream] no State (não recriar a cada build).
   Stream<QuerySnapshot> getProjectsStream() {
     try {
       if (_auth.currentUser == null || agencyId.isEmpty) {
