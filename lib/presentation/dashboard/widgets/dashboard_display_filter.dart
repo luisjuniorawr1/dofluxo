@@ -66,6 +66,14 @@ class _FilterCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    // Borda explícita no widget: theme sozinho ainda pintava caixa preta no dark.
+    final boxSide = BorderSide(
+      width: 2.5,
+      color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212),
+    );
+
     return GestureDetector(
       onTap: () => onChanged(!value),
       behavior: HitTestBehavior.opaque,
@@ -82,12 +90,21 @@ class _FilterCheckbox extends StatelessWidget {
                 onChanged: (checked) => onChanged(checked ?? false),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
+                side: boxSide,
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return theme.colorScheme.primary;
+                  }
+                  return Colors.transparent;
+                }),
+                checkColor: theme.colorScheme.onPrimary,
               ),
             ),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
             ),
           ],

@@ -256,23 +256,17 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
       ),
       checkboxTheme: CheckboxThemeData(
-        // Unselected: borda branca/preta explícita (não depende de outline fraco).
-        // Selected: fill da marca + ✓ com contraste (onBrand).
+        // Unselected: borda clara/escura (BorderSide simples = só no unchecked).
+        // NÃO usar fill escuro no dark — vira “caixa preta” no fundo preto.
         checkColor: WidgetStateProperty.all(onBrand),
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primaryColor;
-          // Fill leve pra a caixa existir como bloco, não só linha.
-          return isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFFFFF);
+          return Colors.transparent;
         }),
-        side: WidgetStateBorderSide.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return BorderSide(width: 2.5, color: primaryColor);
-          }
-          return BorderSide(
-            width: 2.5,
-            color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212),
-          );
-        }),
+        side: BorderSide(
+          width: 2.5,
+          color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212),
+        ),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
