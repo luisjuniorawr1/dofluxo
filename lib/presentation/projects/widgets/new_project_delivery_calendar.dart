@@ -29,6 +29,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
 
   late DateTime _focusedMonth;
   Stream<QuerySnapshot>? _projectsStream;
+  QuerySnapshot? _initialProjects;
 
   @override
   void initState() {
@@ -40,8 +41,13 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Uma assinatura por abertura do dialog — evita recriar a query a cada setState.
-    _projectsStream ??= context.read<ProjectService>().getProjectsStream();
+    // Mesma fonte da sidebar: projetos do usuário via ProjectService.
+    // initialData = snapshot que a sidebar/Kanban já têm (evita mês vazio).
+    if (_projectsStream == null) {
+      final service = context.read<ProjectService>();
+      _initialProjects = service.lastProjectsSnapshot;
+      _projectsStream = service.getProjectsStream();
+    }
   }
 
   @override
@@ -78,6 +84,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
     final scheme = theme.colorScheme;
 
     return StreamBuilder<QuerySnapshot>(
+      initialData: _initialProjects,
       stream: _projectsStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
