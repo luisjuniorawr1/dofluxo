@@ -103,22 +103,27 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
         }
 
         if (!snapshot.hasData) {
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outline),
-            ),
-            child: const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(strokeWidth: 2),
+          // Stream.empty() termina sem data — não ficar em loading infinito.
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: scheme.outline),
               ),
-            ),
-          );
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
         }
 
-        final grouped = DeliveryCalendarMapper.fromSnapshot(snapshot.data!);
+        final grouped = snapshot.hasData
+            ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)
+            : <DateTime, List<CalendarDeliveryEntry>>{};
         final monthCount =
             DeliveryCalendarMapper.countInMonth(grouped, _focusedMonth);
         final selected = widget.selectedDay == null

@@ -28,6 +28,13 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isCreatingProject = false;
   bool _showJobs = true;
   bool _showPlanning = true;
+  Stream<QuerySnapshot>? _projectsStream;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _projectsStream ??= context.read<ProjectService>().getProjectsStream();
+  }
 
   Future<void> _moveProject(
     String projectId,
@@ -138,7 +145,6 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < DashboardLayoutBreakpoints.mobileCarousel;
     final pagePadding = isMobile ? 16.0 : 28.0;
-    final projectsStream = context.read<ProjectService>().getProjectsStream();
 
     return Padding(
       padding: EdgeInsets.all(pagePadding),
@@ -152,7 +158,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: projectsStream,
+              stream: _projectsStream,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
