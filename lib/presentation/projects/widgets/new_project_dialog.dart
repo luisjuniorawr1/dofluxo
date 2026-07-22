@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/theme_utils.dart';
+import '../../agency/agency_service_scope.dart';
 import '../../clients/manager/client_service.dart';
 import '../models/planning_status.dart';
 import '../models/project_category.dart';
 import '../models/project_production_task.dart';
+import '../pages/project_detail_page.dart';
 import 'expected_delivery_date_field.dart';
 import 'new_project_delivery_calendar.dart';
 import 'planning_status_chip.dart';
@@ -74,6 +76,17 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         _expectedDeliveryDate = day;
       }
     });
+  }
+
+  Future<void> _openProjectFromCalendar(String projectId) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+          context,
+          ProjectDetailPage(projectId: projectId),
+        ),
+      ),
+    );
   }
 
   void _submit() {
@@ -152,6 +165,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                                 child: NewProjectDeliveryCalendar(
                                   selectedDay: _calendarSelectedDay,
                                   onDaySelected: _onCalendarDaySelected,
+                                  onProjectTap: _openProjectFromCalendar,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -169,6 +183,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                                 child: NewProjectDeliveryCalendar(
                                   selectedDay: _calendarSelectedDay,
                                   onDaySelected: _onCalendarDaySelected,
+                                  onProjectTap: _openProjectFromCalendar,
                                 ),
                               ),
                               const SizedBox(height: 12),

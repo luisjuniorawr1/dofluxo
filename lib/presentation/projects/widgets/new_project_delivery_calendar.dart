@@ -8,16 +8,20 @@ import '../../projects/manager/project_service.dart';
 import '../../shared/models/calendar_delivery_entry.dart';
 import '../../shared/utils/delivery_calendar_mapper.dart';
 
-/// Calendário mensal amplo: cards do Kanban nas datas de entrega.
+typedef NewProjectCalendarProjectTap = void Function(String projectId);
+
+/// Calendário mensal amplo: nomes clicáveis nas datas de entrega (como a sidebar).
 class NewProjectDeliveryCalendar extends StatefulWidget {
   const NewProjectDeliveryCalendar({
     super.key,
     this.selectedDay,
     this.onDaySelected,
+    this.onProjectTap,
   });
 
   final DateTime? selectedDay;
   final ValueChanged<DateTime>? onDaySelected;
+  final NewProjectCalendarProjectTap? onProjectTap;
 
   @override
   State<NewProjectDeliveryCalendar> createState() =>
@@ -42,7 +46,6 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Mesma fonte da sidebar: projetos do usuário via ProjectService.
-    // initialData = snapshot que a sidebar/Kanban já têm (evita mês vazio).
     if (_projectsStream == null) {
       final service = context.read<ProjectService>();
       _initialProjects = service.lastProjectsSnapshot;
@@ -110,7 +113,6 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
         }
 
         if (!snapshot.hasData) {
-          // Stream.empty() termina sem data — não ficar em loading infinito.
           if (snapshot.connectionState == ConnectionState.waiting) {
             return DecoratedBox(
               decoration: BoxDecoration(
@@ -191,7 +193,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
                   Text(
                     monthCount == 0
                         ? 'Nenhuma entrega no mês'
-                        : '$monthCount card${monthCount == 1 ? '' : 's'} do Kanban',
+                        : '$monthCount entrega${monthCount == 1 ? '' : 's'} no mês',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
@@ -261,8 +263,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
       builder: (context, constraints) {
         const gap = 4.0;
         final rawHeight = (constraints.maxHeight - gap * (rows - 1)) / rows;
-        // Células altas o bastante para mini-cards do Kanban.
-        final cellHeight = rawHeight.clamp(112.0, 180.0);
+        final cellHeight = rawHeight.clamp(88.0, 140.0);
 
         return GridView.builder(
           physics: const BouncingScrollPhysics(),
@@ -291,7 +292,8 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
               entries: entries,
               isSelected: isSelected,
               isToday: isToday,
-              onTap: () => widget.onDaySelected?.call(dayKey),
+              onDayTap: () => widget.onDaySelected?.call(dayKey),
+              onProjectTap: widget.onProjectTap,
             );
           },
         );
@@ -326,20 +328,21 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
             const SizedBox(height: 8),
             if (entries.isEmpty)
               Text(
-                'Nenhum card do Kanban nesta data',
+                'Nenhuma entrega nesta data',
                 style: ThemeUtils.bodyMuted(context),
               )
             else
-              ...entries.take(5).map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _KanbanMiniCard(entry: entry, dense: false),
-                    ),
+              ...entries.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _ClickableProjectName(
+                    entry: entry,
+                    dense: false,
+                    onTap: widget.onProjectTap == null
+                        ? null
+                        : () => widget.onProjectTap!(entry.projectId),
                   ),
-            if (entries.length > 5)
-              Text(
-                '+${entries.length - 5} cards',
-                style: ThemeUtils.bodyMuted(context),
+                ),
               ),
           ],
         ),
@@ -354,14 +357,16 @@ class _MonthDayCell extends StatelessWidget {
     required this.entries,
     required this.isSelected,
     required this.isToday,
-    required this.onTap,
+    required this.onDayTap,
+    this.onProjectTap,
   });
 
   final int dayNumber;
   final List<CalendarDeliveryEntry> entries;
   final bool isSelected;
   final bool isToday;
-  final VoidCallback onTap;
+  final VoidCallback onDayTap;
+  final NewProjectCalendarProjectTap? onProjectTap;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +386,7 @@ class _MonthDayCell extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: onTap,
+        onTap: onDayTap,
         borderRadius: BorderRadius.circular(10),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -410,18 +415,11 @@ class _MonthDayCell extends StatelessWidget {
                     if (entries.isNotEmpty) ...[
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        width: 7,
+                        height: 7,
                         decoration: BoxDecoration(
-                          color: entries.first.zoneHeaderColor ?? accent,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '${entries.length}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 10,
-                          ),
+                          color: accent,
+                          shape: BoxShape.circle,
                         ),
                       ),
                     ],
@@ -433,16 +431,22 @@ class _MonthDayCell extends StatelessWidget {
                       ? const SizedBox.shrink()
                       : ListView(
                           padding: EdgeInsets.zero,
-                          physics: const NeverScrollableScrollPhysics(),
+                          physics: const BouncingScrollPhysics(),
                           children: [
-                            for (final entry in entries.take(2))
+                            for (final entry in entries.take(3))
                               Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: _KanbanMiniCard(entry: entry, dense: true),
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: _ClickableProjectName(
+                                  entry: entry,
+                                  dense: true,
+                                  onTap: onProjectTap == null
+                                      ? null
+                                      : () => onProjectTap!(entry.projectId),
+                                ),
                               ),
-                            if (entries.length > 2)
+                            if (entries.length > 3)
                               Text(
-                                '+${entries.length - 2}',
+                                '+${entries.length - 3}',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: scheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w800,
@@ -460,73 +464,46 @@ class _MonthDayCell extends StatelessWidget {
   }
 }
 
-/// Mini card no visual do Kanban (barra colorida da coluna + título).
-class _KanbanMiniCard extends StatelessWidget {
-  const _KanbanMiniCard({
+/// Só o nome do projeto, clicável — abre o card completo (igual à sidebar).
+class _ClickableProjectName extends StatelessWidget {
+  const _ClickableProjectName({
     required this.entry,
     required this.dense,
+    this.onTap,
   });
 
   final CalendarDeliveryEntry entry;
   final bool dense;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final barColor = entry.zoneHeaderColor ??
-        entry.accentColor ??
-        ThemeUtils.contentAccent(context);
-    final subtitle = entry.cardSubtitle;
+    final scheme = theme.colorScheme;
+    final accent = ThemeUtils.contentAccent(context);
+    final title = entry.cardTitle;
 
-    return Material(
-      color: Colors.white,
-      elevation: dense ? 0.5 : 1,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(8),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(height: dense ? 3.5 : 4.5, color: barColor),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              dense ? 5 : 8,
-              dense ? 4 : 6,
-              dense ? 5 : 8,
-              dense ? 4 : 6,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.cardTitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: const Color(0xFF1A1A1A),
-                    fontWeight: FontWeight.w800,
-                    fontSize: dense ? 11 : 12,
-                    height: 1.2,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.65),
-                      fontWeight: FontWeight.w600,
-                      fontSize: dense ? 9 : 10,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: dense ? 2 : 4,
+          vertical: dense ? 2 : 4,
+        ),
+        child: Text(
+          title,
+          maxLines: dense ? 2 : 3,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: onTap == null ? scheme.onSurface : accent,
+            fontWeight: FontWeight.w800,
+            fontSize: dense ? 11 : 13,
+            height: 1.2,
+            decoration: onTap == null ? null : TextDecoration.underline,
+            decorationColor: accent.withValues(alpha: 0.55),
           ),
-        ],
+        ),
       ),
     );
   }
