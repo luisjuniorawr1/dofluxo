@@ -80,6 +80,22 @@ void registerRevalidationTriggers(void Function() onTrigger) {
   });
 }
 
+/// Remove `?_r=` da barra de endereço após reload com cache-bust.
+/// Mantém o bust no navigation; o usuário não fica com URL suja.
+void stripReloadBustFromUrl() {
+  try {
+    final uri = Uri.parse(html.window.location.href);
+    if (!uri.queryParameters.containsKey('_r')) return;
+
+    final cleaned = Map<String, String>.from(uri.queryParameters)..remove('_r');
+    final path = uri.path.isEmpty ? '/' : uri.path;
+    final next = cleaned.isEmpty
+        ? '${uri.origin}$path'
+        : uri.replace(queryParameters: cleaned).toString();
+    html.window.history.replaceState(null, '', next);
+  } catch (_) {}
+}
+
 /// Recarrega a página imediatamente (síncrono — não aguarda limpeza de cache).
 void reloadApp({String? acceptedVersion}) {
   try {
@@ -89,6 +105,7 @@ void reloadApp({String? acceptedVersion}) {
     }
   } catch (_) {}
 
+  // Cache-bust na navegação; [stripReloadBustFromUrl] limpa a barra no boot.
   final ts = DateTime.now().millisecondsSinceEpoch;
   html.window.location.href = '${html.window.location.origin}/?_r=$ts';
 }
