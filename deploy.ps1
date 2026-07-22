@@ -4,14 +4,16 @@
 # Uso (PowerShell):
 #   powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 #
-# Faz tudo:
-#   1. git pull
-#   2. (opcional) commit de mudancas locais pendentes
-#   3. incrementa version no pubspec.yaml (+N -> +N+1)
-#   4. flutter pub get
-#   5. flutter build web (release, sem SW, APP_VERSION injetada)
-#   6. firebase deploy --only firestore:rules,hosting
-#   7. commit + push da nova versao no GitHub
+# Voce NAO precisa mexer em PR, merge ou git pull manual.
+# Este script faz tudo:
+#   1. vai para main e atualiza do GitHub
+#   2. inclui correcoes pendentes do agente Cursor (branches cursor/*)
+#   3. commit de mudancas locais pendentes (se houver)
+#   4. incrementa version no pubspec.yaml (+N -> +N+1)
+#   5. flutter pub get
+#   6. flutter build web (release, sem SW, APP_VERSION injetada)
+#   7. firebase deploy --only firestore:rules,hosting
+#   8. commit + push da nova versao no GitHub
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -135,7 +137,18 @@ if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
     Assert-LastExit "git checkout pubspec.yaml"
 }
 
-# --- 1) Atualizar do GitHub --------------------------------------------------
+# --- 1) Atualizar do GitHub + correcoes do Cursor ----------------------------
+Write-Host ">> git fetch origin" -ForegroundColor Cyan
+git fetch origin
+Assert-LastExit "git fetch origin"
+
+$currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+if ($currentBranch -ne "main") {
+    Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
+    git checkout main
+    Assert-LastExit "git checkout main"
+}
+
 Write-Host ">> git pull origin main" -ForegroundColor Cyan
 git pull --ff-only origin main
 if ($LASTEXITCODE -ne 0) {
@@ -149,6 +162,40 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
         exit $LASTEXITCODE
     }
+}
+
+# Inclui automaticamente branches do agente Cursor que ainda nao estao no main.
+# Assim voce so roda .\deploy.ps1 — sem merge/PR manual.
+Write-Host ">> buscando correcoes pendentes do Cursor (origin/cursor/*)..." -ForegroundColor Cyan
+$cursorBranches = @(git branch -r --list "origin/cursor/*" | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne "" })
+$mergedAny = $false
+foreach ($remoteBranch in $cursorBranches) {
+    $aheadText = (git rev-list --count "main..$remoteBranch" 2>$null | Out-String).Trim()
+    $ahead = 0
+    if ($aheadText -match '^\d+$') { $ahead = [int]$aheadText }
+    if ($ahead -le 0) { continue }
+
+    Write-Host ">> incluindo $remoteBranch ($ahead commit(s))" -ForegroundColor Cyan
+    git merge --no-edit --no-ff $remoteBranch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "ERRO ao incluir $remoteBranch no main." -ForegroundColor Red
+        Write-Host "Cancelando o merge automatico..." -ForegroundColor Yellow
+        git merge --abort 2>$null
+        Write-Host "Rode de novo .\deploy.ps1 depois que o conflito for resolvido," -ForegroundColor Yellow
+        Write-Host "ou peca ao agente Cursor para ajustar a branch." -ForegroundColor Yellow
+        exit 1
+    }
+    $mergedAny = $true
+}
+
+if ($mergedAny) {
+    Write-Host ">> correcoes do Cursor incluidas no main" -ForegroundColor Green
+    Write-Host ">> enviando main atualizado ao GitHub..." -ForegroundColor Cyan
+    git push origin main
+    Assert-LastExit "git push origin main (cursor merges)"
+} else {
+    Write-Host ">> nenhuma correcao pendente do Cursor" -ForegroundColor DarkGray
 }
 
 # --- 2) Commit automatico de mudancas locais (se houver) ---------------------
@@ -224,16 +271,20 @@ if ($deployResult.ExitCode -ne 0) {
     exit $deployResult.ExitCode
 }
 
-# --- 7) commit + push da versao ----------------------------------------------
+# --- 8) commit + push da versao ----------------------------------------------
 Write-Host ""
 Write-Host ">> git commit + push da versao $newVersion" -ForegroundColor Cyan
 git add pubspec.yaml
+# Cache do hosting muda a cada build — versionar junto evita drift.
+if (Test-Path (Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache")) {
+    git add ".firebase/hosting.YnVpbGRcd2Vi.cache" 2>$null
+}
 $pending = git status --porcelain
 if ($pending) {
     git commit -m "release: $newVersion"
     Assert-LastExit "git commit (release)"
 }
-git push
+git push origin main
 Assert-LastExit "git push"
 
 Write-Host ""
