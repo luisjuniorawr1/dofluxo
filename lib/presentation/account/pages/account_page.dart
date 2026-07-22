@@ -242,9 +242,11 @@ class AccountPage extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Text(
                                   '· Ativa agora',
+                                  // contentAccent: legível no dark mesmo com marca escura.
+                                  // Nunca primary cru (pode sumir no card escuro).
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
+                                    color: ThemeUtils.contentAccent(context),
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -252,8 +254,14 @@ class AccountPage extends StatelessWidget {
                           ),
                         ),
                         trailing: isActive
-                            ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
-                            : const Icon(Icons.chevron_right),
+                            ? Icon(
+                                Icons.check_circle,
+                                color: ThemeUtils.contentAccent(context),
+                              )
+                            : Icon(
+                                Icons.chevron_right,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                         onTap: isActive
                             ? null
                             : () => _selectAgency(context, membership),

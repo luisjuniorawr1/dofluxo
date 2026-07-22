@@ -8,27 +8,27 @@ class RoleBadge extends StatelessWidget {
 
   final AgencyRole role;
 
+  /// Accent sólido por papel — nunca `primaryContainer` com alpha (some no dark).
+  static Color accentFor(AgencyRole role, ColorScheme scheme, Brightness brightness) {
+    return switch (role) {
+      AgencyRole.owner => scheme.primary,
+      AgencyRole.admin => scheme.secondary,
+      // Cinza opaco com contraste claro vs card nos dois temas.
+      AgencyRole.member => brightness == Brightness.dark
+          ? const Color(0xFFC2C2C2)
+          : const Color(0xFF5C5C5C),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return switch (role) {
-      AgencyRole.owner => AppTagBadge.filled(
-          label: role.label,
-          accent: scheme.primary,
-          brightness: theme.brightness,
-        ),
-      AgencyRole.admin => AppTagBadge(
-          label: role.label,
-          background: scheme.secondaryContainer,
-          foreground: scheme.onSecondaryContainer,
-        ),
-      AgencyRole.member => AppTagBadge(
-          label: role.label,
-          background: scheme.surfaceContainerHighest,
-          foreground: scheme.onSurface,
-        ),
-    };
+    return AppTagBadge.filled(
+      label: role.label,
+      accent: accentFor(role, scheme, theme.brightness),
+      brightness: theme.brightness,
+    );
   }
 }
