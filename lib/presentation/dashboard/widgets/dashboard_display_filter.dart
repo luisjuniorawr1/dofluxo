@@ -24,7 +24,7 @@ class DashboardDisplayFilter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
