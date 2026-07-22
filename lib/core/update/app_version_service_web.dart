@@ -1,6 +1,7 @@
 /// Implementação web da checagem de versão publicada.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
@@ -9,6 +10,10 @@ import 'app_update_logic.dart';
 
 const _kAcceptedVersionKey = 'dofluxo_accepted_version';
 const _kSkipOnceKey = 'dofluxo_skip_update_once';
+
+StreamSubscription<html.MouseEvent>? _clickSub;
+StreamSubscription<html.KeyboardEvent>? _keySub;
+StreamSubscription<html.Event>? _focusSub;
 
 bool get versionCheckSupported => true;
 
@@ -39,6 +44,37 @@ void clearSkipUpdateOnce() {
   try {
     html.window.sessionStorage.remove(_kSkipOnceKey);
   } catch (_) {}
+}
+
+/// URL canônica: `origin/` — sem query, hash ou path extra.
+String get _canonicalUrl => '${html.window.location.origin}/';
+
+bool get _urlIsDirty {
+  try {
+    final loc = html.window.location;
+    final path = loc.pathname ?? '/';
+    final search = loc.search ?? '';
+    final hash = loc.hash ?? '';
+    return path != '/' || search.isNotEmpty || hash.isNotEmpty;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Limpa a barra de endereço via replaceState (sem reload).
+void cleanBrowserUrl() {
+  try {
+    if (!_urlIsDirty) return;
+    html.window.history.replaceState(null, '', _canonicalUrl);
+  } catch (_) {}
+}
+
+/// Limpa no boot e de novo em qualquer interação do usuário.
+void registerUrlCleaningTriggers() {
+  cleanBrowserUrl();
+  _clickSub ??= html.document.onClick.listen((_) => cleanBrowserUrl());
+  _keySub ??= html.document.onKeyDown.listen((_) => cleanBrowserUrl());
+  _focusSub ??= html.window.onFocus.listen((_) => cleanBrowserUrl());
 }
 
 Future<String?> fetchRemoteAppVersion() async {
@@ -80,7 +116,7 @@ void registerRevalidationTriggers(void Function() onTrigger) {
   });
 }
 
-/// Recarrega a página imediatamente (síncrono — não aguarda limpeza de cache).
+/// Recarrega a página na URL limpa (sem ?_r=). Bust via headers no-cache.
 void reloadApp({String? acceptedVersion}) {
   try {
     html.window.sessionStorage[_kSkipOnceKey] = '1';
@@ -89,6 +125,5 @@ void reloadApp({String? acceptedVersion}) {
     }
   } catch (_) {}
 
-  final ts = DateTime.now().millisecondsSinceEpoch;
-  html.window.location.href = '${html.window.location.origin}/?_r=$ts';
+  html.window.location.replace(_canonicalUrl);
 }

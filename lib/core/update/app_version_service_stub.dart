@@ -13,6 +13,10 @@ bool shouldSkipUpdateOnce() => false;
 
 void clearSkipUpdateOnce() {}
 
+void cleanBrowserUrl() {}
+
+void registerUrlCleaningTriggers() {}
+
 void registerRevalidationTriggers(void Function() onTrigger) {}
 
 void reloadApp({String? acceptedVersion}) {}

@@ -33,6 +33,8 @@ class _AppUpdateGateState extends State<AppUpdateGate> {
     super.initState();
     if (!kIsWeb || !version_service.versionCheckSupported) return;
 
+    version_service.registerUrlCleaningTriggers();
+
     if (kCompiledAppVersion.isNotEmpty) {
       _sessionVersion = kCompiledAppVersion.trim();
     }
