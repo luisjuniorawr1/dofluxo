@@ -2,18 +2,17 @@
 # DOFLUXO - UM COMANDO: atualizar e publicar
 # =============================================================================
 # Uso (PowerShell):
-#   powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+#   .\deploy.ps1
 #
 # Voce NAO precisa mexer em PR, merge ou git pull manual.
 # Este script faz tudo:
-#   1. vai para main e atualiza do GitHub
-#   2. inclui correcoes RECENTES do agente Cursor (ignora branches antigas/conflito)
-#   3. commit de mudancas locais pendentes (se houver)
-#   4. incrementa version no pubspec.yaml (+N -> +N+1)
-#   5. flutter pub get
-#   6. flutter build web (release, sem SW, APP_VERSION injetada)
-#   7. firebase deploy --only firestore:rules,hosting
-#   8. commit + push da nova versao no GitHub
+#   1. atualiza o main do GitHub (fetch --prune + pull)
+#   2. commit de mudancas locais pendentes (se houver)
+#   3. incrementa version no pubspec.yaml (+N -> +N+1)
+#   4. flutter pub get
+#   5. flutter build web (release, sem SW, APP_VERSION injetada)
+#   6. firebase deploy --only firestore:rules,hosting
+#   7. commit + push da nova versao no GitHub
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -112,10 +111,10 @@ Write-Host ""
 Ensure-GitIdentity
 Ensure-GitEditor
 
-# Merge incompleto bloqueia pull/deploy — limpa automatico se sobrou de tentativa anterior.
+# Merge incompleto bloqueia pull/deploy - limpa automatico se sobrou de tentativa anterior.
 $gitDir = Join-Path $PSScriptRoot ".git"
 if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
-    Write-Host ">> merge incompleto detectado — cancelando para liberar o deploy" -ForegroundColor Yellow
+    Write-Host ">> merge incompleto detectado - cancelando para liberar o deploy" -ForegroundColor Yellow
     git merge --abort
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERRO: nao consegui cancelar o merge incompleto." -ForegroundColor Red
@@ -133,9 +132,8 @@ if ($pubspecDirty -match '^\s*M\s+pubspec\.yaml') {
     Assert-LastExit "git checkout pubspec.yaml"
 }
 
-# --- 1) Atualizar do GitHub + correcoes do Cursor ----------------------------
-# Na 1a passagem: fetch/prune + pull, depois REINICIA o script atualizado.
-# Assim voce sempre roda a versao nova do deploy.ps1 sem git pull manual.
+# --- 1) Atualizar do GitHub --------------------------------------------------
+# Na 1a passagem: fetch/prune + pull, depois REINICIA o script ja atualizado.
 if (-not $env:DOFLUXO_DEPLOY_RELOADED) {
     Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
     git fetch --prune origin
@@ -169,10 +167,7 @@ if (-not $env:DOFLUXO_DEPLOY_RELOADED) {
     exit $LASTEXITCODE
 }
 
-Write-Host ">> git fetch --prune origin" -ForegroundColor Cyan
-git fetch --prune origin
-Assert-LastExit "git fetch --prune origin"
-
+Write-Host ">> confirmando main atualizado..." -ForegroundColor Cyan
 $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
 if ($currentBranch -ne "main") {
     Write-Host ">> mudando para main (estava em $currentBranch)" -ForegroundColor Yellow
@@ -180,71 +175,10 @@ if ($currentBranch -ne "main") {
     Assert-LastExit "git checkout main"
 }
 
-Write-Host ">> git pull origin main" -ForegroundColor Cyan
 git pull --ff-only origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "   ff-only falhou; tentando git pull --rebase..." -ForegroundColor DarkGray
     git pull --rebase origin main
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ""
-        Write-Host "ERRO no git pull. Resolva o estado do Git e tente de novo:" -ForegroundColor Red
-        Write-Host "  git merge --abort" -ForegroundColor Yellow
-        Write-Host "  git pull --rebase origin main" -ForegroundColor Yellow
-        Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
-        exit $LASTEXITCODE
-    }
-}
-
-# Inclui automaticamente branches recentes do agente Cursor.
-# Branches antigas (muito atrasadas em relacao ao main) sao ignoradas —
-# mesclar elas causa conflito e nao e o que voce quer no deploy.
-Write-Host ">> buscando correcoes pendentes do Cursor (origin/cursor/*)..." -ForegroundColor Cyan
-$cursorBranches = @(
-    git branch -r --list "origin/cursor/*" |
-        ForEach-Object { $_.ToString().Trim() } |
-        Where-Object { $_ -ne "" -and $_ -notmatch '^\s*$' }
-)
-$mergedAny = $false
-$maxBehindToMerge = 20
-
-foreach ($remoteBranch in $cursorBranches) {
-    # Confirma que a ref ainda existe no remoto (apos --prune).
-    $exists = (git show-ref --verify --quiet "refs/remotes/$remoteBranch"; $LASTEXITCODE -eq 0)
-    if (-not $exists) { continue }
-
-    $aheadText = (git rev-list --count "main..$remoteBranch" 2>$null | Out-String).Trim()
-    $behindText = (git rev-list --count "$remoteBranch..main" 2>$null | Out-String).Trim()
-    $ahead = 0
-    $behind = 0
-    if ($aheadText -match '^\d+$') { $ahead = [int]$aheadText }
-    if ($behindText -match '^\d+$') { $behind = [int]$behindText }
-    if ($ahead -le 0) { continue }
-
-    if ($behind -gt $maxBehindToMerge) {
-        Write-Host ">> ignorando $remoteBranch (antiga: $behind commits atras do main)" -ForegroundColor DarkGray
-        continue
-    }
-
-    Write-Host ">> incluindo $remoteBranch ($ahead commit(s))" -ForegroundColor Cyan
-    git merge --no-edit --no-ff $remoteBranch
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "   conflito em $remoteBranch — pulando e seguindo o deploy" -ForegroundColor Yellow
-        git merge --abort 2>$null
-        if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
-            git merge --abort 2>$null
-        }
-        continue
-    }
-    $mergedAny = $true
-}
-
-if ($mergedAny) {
-    Write-Host ">> correcoes do Cursor incluidas no main" -ForegroundColor Green
-    Write-Host ">> enviando main atualizado ao GitHub..." -ForegroundColor Cyan
-    git push origin main
-    Assert-LastExit "git push origin main (cursor merges)"
-} else {
-    Write-Host ">> nenhuma correcao recente do Cursor para incluir" -ForegroundColor DarkGray
+    Assert-LastExit "git pull origin main"
 }
 
 # --- 2) Commit automatico de mudancas locais (se houver) ---------------------
@@ -320,11 +254,10 @@ if ($deployResult.ExitCode -ne 0) {
     exit $deployResult.ExitCode
 }
 
-# --- 8) commit + push da versao ----------------------------------------------
+# --- 7) commit + push da versao ----------------------------------------------
 Write-Host ""
 Write-Host ">> git commit + push da versao $newVersion" -ForegroundColor Cyan
 git add pubspec.yaml
-# Cache do hosting muda a cada build — versionar junto evita drift.
 if (Test-Path (Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache")) {
     git add ".firebase/hosting.YnVpbGRcd2Vi.cache" 2>$null
 }
