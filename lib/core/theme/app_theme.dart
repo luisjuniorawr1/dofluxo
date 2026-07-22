@@ -252,16 +252,38 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
       ),
       checkboxTheme: CheckboxThemeData(
+        // Unselected: borda = onSurface (preta no light / clara no dark) — nunca some.
+        // Selected: fill da marca + ✓ com contraste (onBrand).
         checkColor: WidgetStateProperty.all(onBrand),
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primaryColor;
-          return null;
+          return Colors.transparent;
+        }),
+        side: WidgetStateBorderSide.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return BorderSide(width: 2, color: primaryColor);
+          }
+          return BorderSide(width: 2, color: colorScheme.onSurface);
         }),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return contentAccent;
-          return colorScheme.onSurfaceVariant;
+          return colorScheme.onSurface;
+        }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return onBrand;
+          return colorScheme.onSurface;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return primaryColor;
+          return colorScheme.surfaceContainerHighest;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return primaryColor;
+          return colorScheme.onSurface;
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
