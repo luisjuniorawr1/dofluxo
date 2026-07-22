@@ -7,7 +7,7 @@
 # Voce NAO precisa mexer em PR, merge ou git pull manual.
 # Este script faz tudo:
 #   1. vai para main e atualiza do GitHub
-#   2. inclui correcoes pendentes do agente Cursor (branches cursor/*)
+#   2. inclui correcoes RECENTES do agente Cursor (ignora branches antigas/conflito)
 #   3. commit de mudancas locais pendentes (se houver)
 #   4. incrementa version no pubspec.yaml (+N -> +N+1)
 #   5. flutter pub get
@@ -112,21 +112,17 @@ Write-Host ""
 Ensure-GitIdentity
 Ensure-GitEditor
 
-# Merge incompleto bloqueia pull/deploy.
+# Merge incompleto bloqueia pull/deploy — limpa automatico se sobrou de tentativa anterior.
 $gitDir = Join-Path $PSScriptRoot ".git"
 if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
-    Write-Host ""
-    Write-Host "ERRO: existe um merge Git incompleto neste repositorio." -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Para cancelar o merge e continuar o deploy:" -ForegroundColor Yellow
-    Write-Host "  git merge --abort" -ForegroundColor Yellow
-    Write-Host "  git pull origin main" -ForegroundColor Yellow
-    Write-Host "  .\deploy.ps1" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Se voce estava fazendo merge de proposito, conclua antes:" -ForegroundColor DarkGray
-    Write-Host "  git status" -ForegroundColor DarkGray
-    Write-Host "  git commit" -ForegroundColor DarkGray
-    exit 1
+    Write-Host ">> merge incompleto detectado — cancelando para liberar o deploy" -ForegroundColor Yellow
+    git merge --abort
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERRO: nao consegui cancelar o merge incompleto." -ForegroundColor Red
+        Write-Host "Rode: git merge --abort" -ForegroundColor Yellow
+        Write-Host "Depois: .\deploy.ps1" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Deploy anterior pode ter incrementado pubspec.yaml e falhado antes do commit.
@@ -164,27 +160,38 @@ if ($LASTEXITCODE -ne 0) {
     }
 }
 
-# Inclui automaticamente branches do agente Cursor que ainda nao estao no main.
-# Assim voce so roda .\deploy.ps1 — sem merge/PR manual.
+# Inclui automaticamente branches recentes do agente Cursor.
+# Branches antigas (muito atrasadas em relacao ao main) sao ignoradas —
+# mesclar elas causa conflito e nao e o que voce quer no deploy.
 Write-Host ">> buscando correcoes pendentes do Cursor (origin/cursor/*)..." -ForegroundColor Cyan
 $cursorBranches = @(git branch -r --list "origin/cursor/*" | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne "" })
 $mergedAny = $false
+$maxBehindToMerge = 20
+
 foreach ($remoteBranch in $cursorBranches) {
     $aheadText = (git rev-list --count "main..$remoteBranch" 2>$null | Out-String).Trim()
+    $behindText = (git rev-list --count "$remoteBranch..main" 2>$null | Out-String).Trim()
     $ahead = 0
+    $behind = 0
     if ($aheadText -match '^\d+$') { $ahead = [int]$aheadText }
+    if ($behindText -match '^\d+$') { $behind = [int]$behindText }
     if ($ahead -le 0) { continue }
+
+    if ($behind -gt $maxBehindToMerge) {
+        Write-Host ">> ignorando $remoteBranch (antiga: $behind commits atras do main)" -ForegroundColor DarkGray
+        continue
+    }
 
     Write-Host ">> incluindo $remoteBranch ($ahead commit(s))" -ForegroundColor Cyan
     git merge --no-edit --no-ff $remoteBranch
     if ($LASTEXITCODE -ne 0) {
-        Write-Host ""
-        Write-Host "ERRO ao incluir $remoteBranch no main." -ForegroundColor Red
-        Write-Host "Cancelando o merge automatico..." -ForegroundColor Yellow
+        Write-Host "   conflito em $remoteBranch — pulando e seguindo o deploy" -ForegroundColor Yellow
         git merge --abort 2>$null
-        Write-Host "Rode de novo .\deploy.ps1 depois que o conflito for resolvido," -ForegroundColor Yellow
-        Write-Host "ou peca ao agente Cursor para ajustar a branch." -ForegroundColor Yellow
-        exit 1
+        # Garante working tree limpa apos abort.
+        if (Test-Path (Join-Path $gitDir "MERGE_HEAD")) {
+            git merge --abort 2>$null
+        }
+        continue
     }
     $mergedAny = $true
 }
@@ -195,7 +202,7 @@ if ($mergedAny) {
     git push origin main
     Assert-LastExit "git push origin main (cursor merges)"
 } else {
-    Write-Host ">> nenhuma correcao pendente do Cursor" -ForegroundColor DarkGray
+    Write-Host ">> nenhuma correcao recente do Cursor para incluir" -ForegroundColor DarkGray
 }
 
 # --- 2) Commit automatico de mudancas locais (se houver) ---------------------
