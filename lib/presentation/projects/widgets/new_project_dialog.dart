@@ -122,7 +122,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: isWide ? 1120 : 560,
+          maxWidth: isWide ? 1200 : 560,
           maxHeight: maxHeight,
         ),
         child: ClipRRect(
@@ -140,7 +140,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Expanded(
-                                flex: 5,
+                                flex: 6,
                                 child: NewProjectDeliveryCalendar(
                                   selectedDay: _calendarSelectedDay,
                                   onDaySelected: _onCalendarDaySelected,
@@ -148,7 +148,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                flex: 6,
+                                flex: 5,
                                 child: _buildFormPanel(theme, scheme),
                               ),
                             ],
@@ -157,7 +157,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               SizedBox(
-                                height: media.height * 0.34,
+                                height: media.height * 0.42,
                                 child: NewProjectDeliveryCalendar(
                                   selectedDay: _calendarSelectedDay,
                                   onDaySelected: _onCalendarDaySelected,

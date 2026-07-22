@@ -8,7 +8,7 @@ import '../../projects/manager/project_service.dart';
 import '../../shared/models/calendar_delivery_entry.dart';
 import '../../shared/utils/delivery_calendar_mapper.dart';
 
-/// Calendário mensal amplo para o painel “Novo Projeto” (entregas do DOFLUXO).
+/// Calendário mensal amplo: cards do Kanban nas datas de entrega.
 class NewProjectDeliveryCalendar extends StatefulWidget {
   const NewProjectDeliveryCalendar({
     super.key,
@@ -91,17 +91,17 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
             border: Border.all(color: scheme.outline),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(theme, scheme, monthCount),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 _buildWeekdayLabels(scheme),
                 const SizedBox(height: 6),
                 Expanded(child: _buildMonthGrid(theme, scheme, grouped, selected)),
                 if (selected != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildSelectedDayPanel(theme, scheme, selected, selectedEntries),
                 ],
               ],
@@ -132,14 +132,15 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
                       color: scheme.onSurface,
                     ),
                   ),
-                  if (monthCount > 0)
-                    Text(
-                      '$monthCount entrega${monthCount == 1 ? '' : 's'} no mês',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    monthCount == 0
+                        ? 'Nenhuma entrega no mês'
+                        : '$monthCount card${monthCount == 1 ? '' : 's'} do Kanban',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -175,8 +176,8 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
                   color: scheme.onSurfaceVariant,
                 ),
               ),
@@ -198,34 +199,45 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
     final leading = firstDay.weekday % 7;
     final today = DateFormatUtils.dateOnly(DateTime.now());
     final totalCells = ((leading + daysInMonth + 6) ~/ 7) * 7;
+    final rows = (totalCells / 7).ceil();
 
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        mainAxisSpacing: 4,
-        crossAxisSpacing: 4,
-        childAspectRatio: 0.78,
-      ),
-      itemCount: totalCells,
-      itemBuilder: (context, index) {
-        final dayNumber = index - leading + 1;
-        if (dayNumber < 1 || dayNumber > daysInMonth) {
-          return const SizedBox.shrink();
-        }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 5.0;
+        final rawHeight = (constraints.maxHeight - gap * (rows - 1)) / rows;
+        // Células altas o bastante para mini-cards do Kanban.
+        final cellHeight = rawHeight.clamp(108.0, 168.0);
 
-        final day = DateTime(_focusedMonth.year, _focusedMonth.month, dayNumber);
-        final dayKey = DateFormatUtils.dateOnly(day);
-        final entries = grouped[dayKey] ?? const <CalendarDeliveryEntry>[];
-        final isSelected = DateFormatUtils.isSameDay(day, selected);
-        final isToday = DateFormatUtils.isSameDay(day, today);
+        return GridView.builder(
+          physics: const BouncingScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: gap,
+            crossAxisSpacing: gap,
+            mainAxisExtent: cellHeight,
+          ),
+          itemCount: totalCells,
+          itemBuilder: (context, index) {
+            final dayNumber = index - leading + 1;
+            if (dayNumber < 1 || dayNumber > daysInMonth) {
+              return const SizedBox.shrink();
+            }
 
-        return _MonthDayCell(
-          dayNumber: dayNumber,
-          entries: entries,
-          isSelected: isSelected,
-          isToday: isToday,
-          onTap: () => widget.onDaySelected?.call(dayKey),
+            final day =
+                DateTime(_focusedMonth.year, _focusedMonth.month, dayNumber);
+            final dayKey = DateFormatUtils.dateOnly(day);
+            final entries = grouped[dayKey] ?? const <CalendarDeliveryEntry>[];
+            final isSelected = DateFormatUtils.isSameDay(day, selected);
+            final isToday = DateFormatUtils.isSameDay(day, today);
+
+            return _MonthDayCell(
+              dayNumber: dayNumber,
+              entries: entries,
+              isSelected: isSelected,
+              isToday: isToday,
+              onTap: () => widget.onDaySelected?.call(dayKey),
+            );
+          },
         );
       },
     );
@@ -258,42 +270,19 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
             const SizedBox(height: 8),
             if (entries.isEmpty)
               Text(
-                'Nenhuma entrega nesta data',
+                'Nenhum card do Kanban nesta data',
                 style: ThemeUtils.bodyMuted(context),
               )
             else
-              ...entries.take(4).map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: ThemeUtils.contentAccent(context),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          entry.displayTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+              ...entries.take(5).map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _KanbanMiniCard(entry: entry, dense: false),
+                    ),
                   ),
-                );
-              }),
-            if (entries.length > 4)
+            if (entries.length > 5)
               Text(
-                '+${entries.length - 4} mais',
+                '+${entries.length - 5} cards',
                 style: ThemeUtils.bodyMuted(context),
               ),
           ],
@@ -324,9 +313,7 @@ class _MonthDayCell extends StatelessWidget {
     final scheme = theme.colorScheme;
     final accent = ThemeUtils.contentAccent(context);
 
-    final background = isSelected
-        ? scheme.primaryContainer
-        : scheme.surface;
+    final background = isSelected ? scheme.primaryContainer : scheme.surface;
     final borderColor = isSelected
         ? scheme.primary
         : isToday
@@ -335,82 +322,133 @@ class _MonthDayCell extends StatelessWidget {
 
     return Material(
       color: background,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor, width: isToday || isSelected ? 1.5 : 1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: borderColor,
+              width: isToday || isSelected ? 1.8 : 1,
+            ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.fromLTRB(5, 5, 5, 4),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   '$dayNumber',
-                  style: theme.textTheme.labelLarge?.copyWith(
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: isSelected ? scheme.onPrimaryContainer : scheme.onSurface,
+                    color: isSelected
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 2),
-                ...entries.take(2).map((entry) {
-                  final label = (entry.clientName?.isNotEmpty ?? false)
-                      ? entry.clientName!
-                      : entry.title;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: accent,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: scheme.onSurface,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 9,
+                const SizedBox(height: 4),
+                Expanded(
+                  child: entries.isEmpty
+                      ? const SizedBox.shrink()
+                      : Column(
+                          children: [
+                            for (final entry in entries.take(2))
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: _KanbanMiniCard(entry: entry, dense: true),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                if (entries.length > 2)
-                  Text(
-                    '+${entries.length - 2}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 9,
-                    ),
-                  ),
+                            if (entries.length > 2)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '+${entries.length - 2}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Mini card no visual do Kanban (barra colorida da coluna + título).
+class _KanbanMiniCard extends StatelessWidget {
+  const _KanbanMiniCard({
+    required this.entry,
+    required this.dense,
+  });
+
+  final CalendarDeliveryEntry entry;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final barColor = entry.zoneHeaderColor ??
+        entry.accentColor ??
+        ThemeUtils.contentAccent(context);
+    final subtitle = entry.cardSubtitle;
+
+    return Material(
+      color: Colors.white,
+      elevation: dense ? 0.5 : 1,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(height: dense ? 3.5 : 4.5, color: barColor),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              dense ? 5 : 8,
+              dense ? 4 : 6,
+              dense ? 5 : 8,
+              dense ? 4 : 6,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.cardTitle,
+                  maxLines: dense ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: const Color(0xFF1A1A1A),
+                    fontWeight: FontWeight.w800,
+                    fontSize: dense ? 10 : 12,
+                    height: 1.2,
+                  ),
+                ),
+                if (!dense && subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.65),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

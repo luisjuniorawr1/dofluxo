@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 import '../../../core/utils/date_format_utils.dart';
+import '../../dashboard/config/kanban_constants.dart';
+import '../../dashboard/models/project_board_item.dart';
 import '../../dashboard/utils/dashboard_board_mapper.dart';
 import '../models/calendar_delivery_entry.dart';
 
-/// Agrupa projetos por data de entrega prevista para o calendário lateral.
+/// Agrupa os mesmos cards do Kanban por data de entrega (`projectDeliveryDate`).
 class DeliveryCalendarMapper {
   DeliveryCalendarMapper._();
 
@@ -13,33 +16,31 @@ class DeliveryCalendarMapper {
 
     for (final doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>? ?? {};
-      final deliveryDate = DateFormatUtils.fromFirestore(data['expectedDeliveryDate']) ??
-          DateFormatUtils.fromFirestore(data['scheduledDate']);
-      final title = (data['title'] as String?)?.trim() ?? '';
-      if (deliveryDate == null || title.isEmpty) continue;
+      final item = ProjectBoardItem.fromFirestore(doc.id, data);
+      if (item.cardPrimaryTitle == 'Sem nome' && item.title.isEmpty) continue;
 
-      final key = DateFormatUtils.dateOnly(deliveryDate);
-      final status = data['status'] as String?;
-      final stageId = DashboardBoardMapper.stageIdForStatus(status);
-      final statusLabel = DashboardBoardMapper.cardStatusLabel(
-        firestoreStatus: status,
-        stage: stageId,
-        isCompleted: DashboardBoardMapper.isCompletedStatus(status),
-      );
+      final deliveryDate = DateFormatUtils.projectDeliveryDate(data);
+      if (deliveryDate == null) continue;
 
-      grouped.putIfAbsent(key, () => []).add(
+      final zone = DashboardBoardMapper.workflowZoneForItem(data, item);
+      final zoneColor = KanbanConstants.cardHeaderColorForZone(zone.name);
+
+      grouped.putIfAbsent(deliveryDate, () => []).add(
             CalendarDeliveryEntry(
               projectId: doc.id,
-              title: title,
-              deliveryDate: key,
-              clientName: (data['clientName'] as String?)?.trim(),
-              statusLabel: statusLabel,
+              title: item.title,
+              deliveryDate: deliveryDate,
+              clientName: item.clientName,
+              statusLabel: item.statusLabel ?? item.planningStatusLabel,
+              primaryTitle: item.cardPrimaryTitle,
+              zoneHeaderColor: zoneColor,
+              accentColor: item.accentColor,
             ),
           );
     }
 
     for (final entries in grouped.values) {
-      entries.sort((a, b) => a.title.compareTo(b.title));
+      entries.sort((a, b) => a.cardTitle.compareTo(b.cardTitle));
     }
 
     return grouped;
