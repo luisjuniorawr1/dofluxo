@@ -3,11 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/theme_utils.dart';
 import '../../clients/manager/client_service.dart';
 import '../models/planning_status.dart';
 import '../models/project_category.dart';
 import '../models/project_production_task.dart';
 import 'expected_delivery_date_field.dart';
+import 'new_project_delivery_calendar.dart';
 import 'planning_status_chip.dart';
 
 class NewProjectDialog extends StatefulWidget {
@@ -35,6 +37,9 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
 
   bool get _isPlanejamento => _category == ProjectCategory.planejamento;
 
+  DateTime? get _calendarSelectedDay =>
+      _isPlanejamento ? _scheduledDate : _expectedDeliveryDate;
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -61,78 +66,223 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     return _selectedFormat;
   }
 
+  void _onCalendarDaySelected(DateTime day) {
+    setState(() {
+      if (_isPlanejamento) {
+        _scheduledDate = day;
+      } else {
+        _expectedDeliveryDate = day;
+      }
+    });
+  }
+
+  void _submit() {
+    final theme = Theme.of(context);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_isPlanejamento && _scheduledDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Selecione a data do post.'),
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      NewProjectResult(
+        category: _category,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        clientId: _selectedClientId!,
+        clientName: _selectedClientName ?? '',
+        tasks: _isPlanejamento ? const [] : _tasks,
+        expectedDeliveryDate: _isPlanejamento ? _scheduledDate : _expectedDeliveryDate,
+        format: _isPlanejamento ? _resolvedFormat : null,
+        reference: _isPlanejamento ? _referenceController.text.trim() : null,
+        planningStatus: _isPlanejamento ? _planningStatus : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final media = MediaQuery.sizeOf(context);
+    final isWide = media.width >= 900;
+    final maxHeight = media.height * 0.92;
 
-    return AlertDialog(
-      title: const Text('Novo Projeto'),
-      content: SizedBox(
-        width: 480,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      backgroundColor: scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isWide ? 1120 : 560,
+          maxHeight: maxHeight,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Material(
+            color: scheme.surface,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Categoria', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                SegmentedButton<ProjectCategory>(
-                  segments: ProjectCategory.values
-                      .map((c) => ButtonSegment(value: c, label: Text(c.label)))
-                      .toList(),
-                  selected: {_category},
-                  onSelectionChanged: (values) => setState(() => _category = values.first),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: isWide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: NewProjectDeliveryCalendar(
+                                  selectedDay: _calendarSelectedDay,
+                                  onDaySelected: _onCalendarDaySelected,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 6,
+                                child: _buildFormPanel(theme, scheme),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                height: media.height * 0.34,
+                                child: NewProjectDeliveryCalendar(
+                                  selectedDay: _calendarSelectedDay,
+                                  onDaySelected: _onCalendarDaySelected,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(child: _buildFormPanel(theme, scheme)),
+                            ],
+                          ),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _buildClientField(),
-                const SizedBox(height: 16),
-                if (_isPlanejamento) ...[
-                  ..._buildPlanejamentoFields(),
-                ] else ...[
-                  ..._buildJobFields(theme),
-                ],
+                _buildFooter(theme, scheme),
               ],
             ),
           ),
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () {
-            if (_formKey.currentState?.validate() ?? false) {
-              if (_isPlanejamento && _scheduledDate == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Selecione a data do post.'),
-                    backgroundColor: theme.colorScheme.error,
-                  ),
-                );
-                return;
-              }
+    );
+  }
 
-              Navigator.pop(
-                context,
-                NewProjectResult(
-                  category: _category,
-                  title: _titleController.text.trim(),
-                  description: _descriptionController.text.trim(),
-                  clientId: _selectedClientId!,
-                  clientName: _selectedClientName ?? '',
-                  tasks: _isPlanejamento ? const [] : _tasks,
-                  expectedDeliveryDate: _isPlanejamento ? _scheduledDate : _expectedDeliveryDate,
-                  format: _isPlanejamento ? _resolvedFormat : null,
-                  reference: _isPlanejamento ? _referenceController.text.trim() : null,
-                  planningStatus: _isPlanejamento ? _planningStatus : null,
+  Widget _buildFormPanel(ThemeData theme, ColorScheme scheme) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Text(
+                'Novo Projeto',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
                 ),
-              );
-            }
-          },
-          child: const Text('Criar'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Categoria',
+                      style: ThemeUtils.sectionTitle(context),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<ProjectCategory>(
+                      segments: ProjectCategory.values
+                          .map(
+                            (c) => ButtonSegment(
+                              value: c,
+                              label: Text(c.label),
+                              icon: Icon(
+                                c == ProjectCategory.job
+                                    ? Icons.work_outline
+                                    : Icons.calendar_month_outlined,
+                                size: 18,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      selected: {_category},
+                      onSelectionChanged: (values) =>
+                          setState(() => _category = values.first),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildClientField(),
+                    const SizedBox(height: 16),
+                    if (_isPlanejamento) ...[
+                      ..._buildPlanejamentoFields(theme),
+                    ] else ...[
+                      ..._buildJobFields(theme, scheme),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildFooter(ThemeData theme, ColorScheme scheme) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        border: Border(top: BorderSide(color: scheme.outline)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Tooltip(
+              message: 'Em breve — rascunhos ainda não estão no backend',
+              child: TextButton(
+                onPressed: null,
+                child: Text(
+                  'Salvar rascunho',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: _submit,
+              child: const Text('Criar'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -172,8 +322,10 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     );
   }
 
-  List<Widget> _buildJobFields(ThemeData theme) {
-    return [
+  List<Widget> _buildJobFields(ThemeData theme, ColorScheme scheme) {
+    final isWideForm = MediaQuery.sizeOf(context).width >= 900;
+
+    final mainFields = <Widget>[
       TextFormField(
         controller: _titleController,
         autofocus: true,
@@ -182,7 +334,9 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           border: OutlineInputBorder(),
         ),
         validator: (value) {
-          if (value == null || value.trim().isEmpty) return 'Informe o nome do projeto';
+          if (value == null || value.trim().isEmpty) {
+            return 'Informe o nome do projeto';
+          }
           return null;
         },
       ),
@@ -200,32 +354,67 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         value: _expectedDeliveryDate,
         onChanged: (date) => setState(() => _expectedDeliveryDate = date),
       ),
-      const SizedBox(height: 20),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          'Atividades de produção (até 5)',
-          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
+    ];
+
+    final activities = _buildActivitiesBlock(theme, scheme);
+
+    if (!isWideForm) {
+      return [...mainFields, const SizedBox(height: 20), activities];
+    }
+
+    return [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: Column(children: mainFields)),
+          const SizedBox(width: 16),
+          Expanded(child: activities),
+        ],
       ),
-      const SizedBox(height: 8),
-      ...List.generate(5, (index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: TextFormField(
-            controller: _taskControllers[index],
-            decoration: InputDecoration(
-              labelText: 'Atividade ${index + 1}',
-              border: const OutlineInputBorder(),
-              hintText: 'Opcional',
-            ),
-          ),
-        );
-      }),
     ];
   }
 
-  List<Widget> _buildPlanejamentoFields() {
+  Widget _buildActivitiesBlock(ThemeData theme, ColorScheme scheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Atividades de produção',
+          style: ThemeUtils.sectionTitle(context),
+        ),
+        const SizedBox(height: 10),
+        ...List.generate(5, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: scheme.outline),
+              ),
+              child: TextFormField(
+                controller: _taskControllers[index],
+                decoration: InputDecoration(
+                  labelText: 'Atividade ${index + 1}',
+                  hintText: 'Opcional',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  List<Widget> _buildPlanejamentoFields(ThemeData theme) {
     return [
       TextFormField(
         controller: _titleController,
@@ -235,7 +424,9 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           border: OutlineInputBorder(),
         ),
         validator: (value) {
-          if (value == null || value.trim().isEmpty) return 'Informe o nome do projeto';
+          if (value == null || value.trim().isEmpty) {
+            return 'Informe o nome do projeto';
+          }
           return null;
         },
       ),
@@ -283,7 +474,9 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           alignLabelWithHint: true,
         ),
         validator: (value) {
-          if (value == null || value.trim().isEmpty) return 'Informe a descrição';
+          if (value == null || value.trim().isEmpty) {
+            return 'Informe a descrição';
+          }
           return null;
         },
       ),
@@ -300,7 +493,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         ),
       ),
       const SizedBox(height: 20),
-      Text('Status', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      Text('Status', style: ThemeUtils.sectionTitle(context)),
       const SizedBox(height: 10),
       Wrap(
         spacing: 8,
@@ -355,7 +548,8 @@ class NewProjectResult {
         'clientName': clientName,
         if (format != null) 'format': format,
         if (reference != null && reference!.isNotEmpty) 'reference': reference,
-        'planningStatus': planningStatus?.firestoreValue ?? PlanningStatus.all.first.firestoreValue,
+        'planningStatus':
+            planningStatus?.firestoreValue ?? PlanningStatus.all.first.firestoreValue,
         'status': 'Planejamento',
         if (deliveryTimestamp != null) 'scheduledDate': deliveryTimestamp,
         if (deliveryTimestamp != null) 'expectedDeliveryDate': deliveryTimestamp,
