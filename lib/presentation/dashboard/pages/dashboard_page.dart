@@ -77,8 +77,12 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _openProfileSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const ProfilePage()),
+    await showAppModal<void>(
+      context: context,
+      builder: (dialogContext) => const AppModalShell(
+        size: AppModalSize.large,
+        child: ProfilePage(),
+      ),
     );
   }
 

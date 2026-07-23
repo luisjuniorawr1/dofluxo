@@ -8,6 +8,7 @@ import '../../../core/utils/theme_utils.dart';
 import '../../agency/pages/agency_onboarding_page.dart';
 import '../../agency/pages/join_agency_page.dart';
 import '../../profile/pages/profile_page.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../../team/widgets/role_badge.dart';
 
 /// Tela de conta: dados do usuário e agências vinculadas.
@@ -276,10 +277,11 @@ class AccountPage extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const JoinAgencyPage(),
+                      showAppModal<void>(
+                        context: context,
+                        builder: (dialogContext) => const AppModalShell(
+                          size: AppModalSize.medium,
+                          child: JoinAgencyPage(),
                         ),
                       );
                     },
@@ -288,10 +290,11 @@ class AccountPage extends StatelessWidget {
                   ),
                   OutlinedButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const AgencyOnboardingPage(isAdditional: true),
+                      showAppModal<void>(
+                        context: context,
+                        builder: (dialogContext) => const AppModalShell(
+                          size: AppModalSize.medium,
+                          child: AgencyOnboardingPage(isAdditional: true),
                         ),
                       );
                     },
@@ -301,10 +304,11 @@ class AccountPage extends StatelessWidget {
                   if (agencyContext.canManageSettings)
                     OutlinedButton.icon(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (context) => const ProfilePage(),
+                        showAppModal<void>(
+                          context: context,
+                          builder: (dialogContext) => const AppModalShell(
+                            size: AppModalSize.large,
+                            child: ProfilePage(),
                           ),
                         );
                       },
