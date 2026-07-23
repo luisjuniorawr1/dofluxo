@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/agency/models/membership.dart';
+import '../../shared/widgets/app_modal.dart';
 
 Future<bool?> showRemoveMemberDialog(
   BuildContext context, {
@@ -12,29 +13,15 @@ Future<bool?> showRemoveMemberDialog(
       ? membership.userDisplayName!.trim()
       : membership.userEmail;
 
-  return showDialog<bool>(
+  return showAppConfirmModal(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(isCurrentUser ? 'Sair da agência' : 'Remover da equipe'),
-      content: Text(
-        isCurrentUser
-            ? 'Você sairá da agência $agencyName e precisará ser adicionado novamente para voltar.'
-            : 'Deseja remover $displayName da agência $agencyName? '
-                'Essa pessoa perderá acesso a projetos e clientes desta agência.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-          child: Text(isCurrentUser ? 'Sair' : 'Remover'),
-        ),
-      ],
-    ),
+    title: isCurrentUser ? 'Sair da agência' : 'Remover da equipe',
+    message: isCurrentUser
+        ? 'Você sairá da agência $agencyName e precisará ser adicionado novamente para voltar.'
+        : 'Deseja remover $displayName da agência $agencyName? '
+            'Essa pessoa perderá acesso a projetos e clientes desta agência.',
+    cancelLabel: 'Cancelar',
+    confirmLabel: isCurrentUser ? 'Sair' : 'Remover',
+    isDestructive: true,
   );
 }

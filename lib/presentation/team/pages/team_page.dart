@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/agency/agency_context.dart';
 import '../../../core/agency/models/agency_role.dart';
 import '../../../core/agency/models/membership.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../manager/team_service.dart';
 import '../utils/team_member_sorter.dart';
 import '../widgets/add_member_dialog.dart';
@@ -39,7 +40,7 @@ class _TeamPageState extends State<TeamPage> {
   }
 
   Future<void> _showAddMemberDialog(AgencyContext agencyContext) async {
-    final result = await showDialog<(String, AgencyRole)>(
+    final result = await showAppModal<(String, AgencyRole)>(
       context: context,
       builder: (context) => const AddMemberDialog(),
     );
@@ -85,32 +86,20 @@ class _TeamPageState extends State<TeamPage> {
   }
 
   Future<void> _showEditRoleDialog(Membership membership) async {
-    final newRole = await showDialog<AgencyRole>(
+    final newRole = await showAppModal<AgencyRole>(
       context: context,
       builder: (context) => EditRoleDialog(membership: membership),
     );
     if (newRole == null || newRole == membership.role || !mounted) return;
 
     if (membership.role == AgencyRole.admin && newRole == AgencyRole.member) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showAppConfirmModal(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Rebaixar admin'),
-          content: Text(
+        title: 'Rebaixar admin',
+        message:
             '${membership.userDisplayName ?? membership.userEmail} perderá acesso '
             'às configurações da agência. Continuar?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Continuar'),
-            ),
-          ],
-        ),
+        confirmLabel: 'Continuar',
       );
       if (confirmed != true || !mounted) return;
     }

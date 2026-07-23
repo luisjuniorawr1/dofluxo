@@ -12,6 +12,7 @@ import '../team/pages/team_page.dart';
 import '../account/pages/account_page.dart';
 import '../projects/pages/project_detail_page.dart';
 import 'theme_toggle_button.dart';
+import 'widgets/app_modal.dart';
 import 'widgets/sidebar_delivery_calendar.dart';
 
 class MainShell extends StatefulWidget {
@@ -33,16 +34,12 @@ class _MainShellState extends State<MainShell> {
   ];
 
   Future<void> _handleLogout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmModal(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sair da conta'),
-        content: const Text('Deseja encerrar sua sessão?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sair')),
-        ],
-      ),
+      title: 'Sair da conta',
+      message: 'Deseja encerrar sua sessão?',
+      confirmLabel: 'Sair',
+      isDestructive: true,
     );
 
     if (confirmed != true) return;
@@ -55,9 +52,11 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _openProjectFromCalendar(String projectId, {required bool isMobile}) async {
     if (isMobile) Navigator.pop(context);
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+    await showAppModal<void>(
+      context: context,
+      builder: (dialogContext) => AppModalShell(
+        size: AppModalSize.large,
+        child: AgencyServiceScope.wrapRoute(
           context,
           ProjectDetailPage(projectId: projectId),
         ),

@@ -9,6 +9,7 @@ import '../../profile/pages/profile_page.dart';
 import '../../projects/manager/project_service.dart';
 import '../../projects/pages/project_detail_page.dart';
 import '../../projects/widgets/new_project_dialog.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../config/dashboard_layout_breakpoints.dart';
 import '../config/dashboard_zones.dart';
 import '../utils/dashboard_board_mapper.dart';
@@ -82,9 +83,11 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _openProject(String projectId) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+    await showAppModal<void>(
+      context: context,
+      builder: (dialogContext) => AppModalShell(
+        size: AppModalSize.large,
+        child: AgencyServiceScope.wrapRoute(
           context,
           ProjectDetailPage(projectId: projectId),
         ),
@@ -94,7 +97,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _showNewProjectDialog() async {
     try {
-      final result = await showDialog<NewProjectResult>(
+      final result = await showAppModal<NewProjectResult>(
         context: context,
         builder: (dialogContext) => AgencyServiceScope.wrapRoute(
           context,

@@ -6,6 +6,7 @@ import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/theme_utils.dart';
 import '../../agency/agency_service_scope.dart';
 import '../../clients/manager/client_service.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../models/planning_status.dart';
 import '../models/project_category.dart';
 import '../models/project_production_task.dart';
@@ -79,9 +80,11 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
   }
 
   Future<void> _openProjectFromCalendar(String projectId) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+    await showAppModal<void>(
+      context: context,
+      builder: (dialogContext) => AppModalShell(
+        size: AppModalSize.large,
+        child: AgencyServiceScope.wrapRoute(
           context,
           ProjectDetailPage(projectId: projectId),
         ),
@@ -126,77 +129,53 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     final scheme = theme.colorScheme;
     final media = MediaQuery.sizeOf(context);
     final isWide = media.width >= 900;
-    final maxHeight = media.height * 0.94;
-    // Quase full-bleed: células do calendário ficam mais largas p/ o nome do card.
-    final dialogWidth = isWide
-        ? (media.width - 24).clamp(1100.0, 1680.0)
-        : 560.0;
 
-    return Dialog(
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: isWide ? 12 : 16,
-        vertical: 12,
-      ),
-      backgroundColor: scheme.surface,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: dialogWidth,
-          maxHeight: maxHeight,
-          minWidth: isWide ? dialogWidth : 0,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Material(
-            color: scheme.surface,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    child: isWide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                flex: 7,
-                                child: NewProjectDeliveryCalendar(
-                                  selectedDay: _calendarSelectedDay,
-                                  onDaySelected: _onCalendarDaySelected,
-                                  onProjectTap: _openProjectFromCalendar,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 4,
-                                child: _buildFormPanel(theme, scheme),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: media.height * 0.42,
-                                child: NewProjectDeliveryCalendar(
-                                  selectedDay: _calendarSelectedDay,
-                                  onDaySelected: _onCalendarDaySelected,
-                                  onProjectTap: _openProjectFromCalendar,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Expanded(child: _buildFormPanel(theme, scheme)),
-                            ],
+    return AppModalShell(
+      size: AppModalSize.wide,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: isWide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: NewProjectDeliveryCalendar(
+                            selectedDay: _calendarSelectedDay,
+                            onDaySelected: _onCalendarDaySelected,
+                            onProjectTap: _openProjectFromCalendar,
                           ),
-                  ),
-                ),
-                _buildFooter(theme, scheme),
-              ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 4,
+                          child: _buildFormPanel(theme, scheme),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: media.height * 0.42,
+                          child: NewProjectDeliveryCalendar(
+                            selectedDay: _calendarSelectedDay,
+                            onDaySelected: _onCalendarDaySelected,
+                            onProjectTap: _openProjectFromCalendar,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(child: _buildFormPanel(theme, scheme)),
+                      ],
+                    ),
             ),
           ),
-        ),
+          _buildFooter(theme, scheme),
+        ],
       ),
     );
   }

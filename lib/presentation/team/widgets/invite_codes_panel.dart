@@ -5,6 +5,7 @@ import '../../../core/agency/services/invite_code_service.dart';
 import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/theme_utils.dart';
 import '../../agency/pages/join_agency_page.dart';
+import '../../shared/widgets/app_modal.dart';
 
 class InviteCodesPanel extends StatelessWidget {
   const InviteCodesPanel({
@@ -17,22 +18,12 @@ class InviteCodesPanel extends StatelessWidget {
   final InviteCodeService inviteCodeService;
 
   Future<void> _revokeCode(BuildContext context, String code) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmModal(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Revogar código'),
-        content: Text('O código $code não poderá mais ser usado. Continuar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Revogar'),
-          ),
-        ],
-      ),
+      title: 'Revogar código',
+      message: 'O código $code não poderá mais ser usado. Continuar?',
+      confirmLabel: 'Revogar',
+      isDestructive: true,
     );
     if (confirmed != true || !context.mounted) return;
 

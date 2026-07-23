@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../manager/client_service.dart';
 import '../../agency/agency_service_scope.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../models/client_social_link.dart';
 import '../pages/client_form_page.dart';
 import '../widgets/client_social_links_field.dart';
@@ -16,9 +17,11 @@ class ClientsPage extends StatefulWidget {
 
 class _ClientsPageState extends State<ClientsPage> {
   Future<void> _openClientForm({String? docId, Map<String, dynamic>? initialData}) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (routeContext) => AgencyServiceScope.wrapRoute(
+    await showAppModal<bool>(
+      context: context,
+      builder: (dialogContext) => AppModalShell(
+        size: AppModalSize.large,
+        child: AgencyServiceScope.wrapRoute(
           context,
           ClientFormPage(docId: docId, initialData: initialData),
         ),
@@ -27,20 +30,12 @@ class _ClientsPageState extends State<ClientsPage> {
   }
 
   Future<void> _confirmDelete(String docId, String name) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmModal(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir cliente'),
-        content: Text('Deseja excluir "$name"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+      title: 'Excluir cliente',
+      message: 'Deseja excluir "$name"?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
     );
 
     if (confirmed != true) return;
