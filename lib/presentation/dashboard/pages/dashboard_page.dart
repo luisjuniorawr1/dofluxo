@@ -147,7 +147,9 @@ class _DashboardPageState extends State<DashboardPage> {
     final pagePadding = isMobile ? 16.0 : 28.0;
 
     return Padding(
-      padding: EdgeInsets.all(pagePadding),
+      padding: isMobile
+          ? EdgeInsets.all(pagePadding)
+          : const EdgeInsets.fromLTRB(30, 26, 30, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -155,7 +157,7 @@ class _DashboardPageState extends State<DashboardPage> {
             userName: _userFirstName,
             actions: _buildActions(isMobile),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isMobile ? 18 : 24),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _projectsStream,
@@ -264,15 +266,18 @@ class _DashboardPageState extends State<DashboardPage> {
       label: const Text('Novo Projeto'),
     );
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        filter,
-        if (canManageSettings) settingsButton,
-        newProjectButton,
-      ],
+    return Padding(
+      padding: EdgeInsets.only(right: isMobile ? 0 : 56),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          filter,
+          if (canManageSettings) settingsButton,
+          newProjectButton,
+        ],
+      ),
     );
   }
 }

@@ -18,12 +18,13 @@ class AppTheme {
     );
 
     // Texto principal e secundário com contraste forte nos dois temas.
-    final onSurface = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212);
+    final onSurface = isDark ? const Color(0xFFF7F8FA) : const Color(0xFF15171C);
     // Secundário: legível em cards (não “cinza fantasma”).
-    final onSurfaceVariant = isDark ? const Color(0xFFE2E2E2) : const Color(0xFF3A3A3A);
-    final surface = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+    final onSurfaceVariant =
+        isDark ? const Color(0xFFB7BBC4) : const Color(0xFF5D626D);
+    final surface = isDark ? const Color(0xFF0D0F12) : const Color(0xFFF6F7F9);
     final surfaceContainerHighest =
-        isDark ? const Color(0xFF454545) : const Color(0xFFD0D0D0);
+        isDark ? const Color(0xFF252930) : const Color(0xFFE1E4E9);
 
     final onBrand = ThemeUtils.getContrastColor(primaryColor);
     final contentAccent = ThemeUtils.readableAccent(
@@ -73,13 +74,18 @@ class AppTheme {
       surface: surface,
       onSurface: onSurface,
       onSurfaceVariant: onSurfaceVariant,
-      surfaceContainerLowest: isDark ? const Color(0xFF0D0D0D) : const Color(0xFFFFFFFF),
-      surfaceContainerLow: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF3F3F3),
-      surfaceContainer: isDark ? const Color(0xFF242424) : const Color(0xFFEBEBEB),
-      surfaceContainerHigh: isDark ? const Color(0xFF303030) : const Color(0xFFE0E0E0),
+      surfaceContainerLowest:
+          isDark ? const Color(0xFF090A0C) : const Color(0xFFFFFFFF),
+      surfaceContainerLow:
+          isDark ? const Color(0xFF14171B) : const Color(0xFFFFFFFF),
+      surfaceContainer:
+          isDark ? const Color(0xFF191D22) : const Color(0xFFF0F2F5),
+      surfaceContainerHigh:
+          isDark ? const Color(0xFF20242A) : const Color(0xFFE9ECF0),
       surfaceContainerHighest: surfaceContainerHighest,
-      outline: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF5F5F5F),
-      outlineVariant: isDark ? const Color(0xFF555555) : const Color(0xFFB0B0B0),
+      outline: isDark ? const Color(0xFF59606B) : const Color(0xFF9AA1AC),
+      outlineVariant:
+          isDark ? const Color(0xFF2B3038) : const Color(0xFFDDE1E7),
       // SnackBar / banner de update usam inverse* — seed pode gerar preto-no-preto.
       inverseSurface: isDark ? const Color(0xFFE8E8E8) : const Color(0xFF2C2C2C),
       onInverseSurface: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
@@ -147,10 +153,13 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerLow,
-        elevation: isDark ? 0 : 1,
-        shadowColor: Colors.black26,
+        elevation: 0,
+        shadowColor: Colors.black.withValues(alpha: 0.12),
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: colorScheme.onSurfaceVariant,
@@ -292,18 +301,27 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           foregroundColor: onBrand,
           backgroundColor: primaryColor,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           foregroundColor: onBrand,
           backgroundColor: primaryColor,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.onSurface,
-          side: BorderSide(color: colorScheme.outline),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          side: BorderSide(color: colorScheme.outlineVariant),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

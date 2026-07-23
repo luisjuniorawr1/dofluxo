@@ -68,21 +68,40 @@ class KanbanColumn<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bodyColor = KanbanConstants.columnBodyBackground(column);
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final bodyColor = Color.alphaBlend(
+      column.cardColor.withValues(alpha: theme.brightness == Brightness.dark ? 0.055 : 0.045),
+      colors.surfaceContainerLow,
+    );
     final effectiveMove = column.acceptsDragDrop ? onMove : null;
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: bodyColor,
         borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
+        border: Border.all(color: colors.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.16 : 0.055,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(KanbanConstants.columnBodyRadius),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Container(
+              height: 4,
+              color: column.cardColor,
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              padding: const EdgeInsets.fromLTRB(14, 13, 14, 0),
               child: effectiveMove == null
                   ? _ColumnHeader(column: column, itemCount: items.length)
                   : _DropTargetShell<T>(
@@ -267,12 +286,28 @@ class _ColumnHeader extends StatelessWidget {
       children: [
         Row(
           children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: column.cardColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: column.cardColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 9),
             Expanded(
               child: Text(
                 column.title,
                 style: ThemeUtils.sectionTitle(context).copyWith(
-                  color: KanbanConstants.onCardColor(column.cardColor),
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w800,
+                  letterSpacing: -0.15,
                 ),
               ),
             ),
@@ -280,14 +315,17 @@ class _ColumnHeader extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: column.cardHeaderColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: column.cardColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: column.cardColor.withValues(alpha: 0.28),
+                  ),
                 ),
                 child: Text(
                   '$itemCount',
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: KanbanConstants.onCardColor(column.cardHeaderColor),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),

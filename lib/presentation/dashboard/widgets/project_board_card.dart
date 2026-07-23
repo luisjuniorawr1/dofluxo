@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../config/kanban_constants.dart';
 import '../models/project_board_item.dart';
 
 /// Card do Kanban com hover, elevação e estados de drag/placeholder.
@@ -32,9 +31,11 @@ class _ProjectBoardCardState extends State<ProjectBoardCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const bodyColor = Color(0xFF1A1A1A);
-    const radius = 12.0;
-    final barHeight = widget.compact ? 4.0 : 5.0;
+    final colors = theme.colorScheme;
+    final bodyColor = colors.onSurface;
+    final accentColor = widget.item.accentColor ?? widget.zoneCardColor;
+    const radius = 14.0;
+    final barHeight = widget.compact ? 3.0 : 4.0;
     final padding = widget.compact
         ? const EdgeInsets.fromLTRB(8, 6, 8, 7)
         : const EdgeInsets.fromLTRB(10, 8, 10, 9);
@@ -44,8 +45,8 @@ class _ProjectBoardCardState extends State<ProjectBoardCard> {
         widget.interactive && !widget.isDragging && !widget.isPlaceholder;
     final showHover = canHover && _isHovered;
 
-    final elevation = widget.isDragging ? 8.0 : (showHover ? 5.0 : 1.0);
-    final scale = showHover ? 1.02 : 1.0;
+    final elevation = widget.isDragging ? 8.0 : (showHover ? 4.0 : 0.0);
+    final scale = showHover ? 1.01 : 1.0;
 
     Widget card = AnimatedScale(
       scale: scale,
@@ -60,36 +61,51 @@ class _ProjectBoardCardState extends State<ProjectBoardCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(radius),
-            border: showHover
-                ? Border.all(
-                    color: bodyColor.withValues(alpha: 0.35),
-                    width: 1.5,
-                  )
-                : null,
+            border: Border.all(
+              color: showHover
+                  ? accentColor.withValues(alpha: 0.65)
+                  : colors.outlineVariant,
+              width: showHover ? 1.4 : 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(height: barHeight, color: widget.zoneCardColor),
+              Container(height: barHeight, color: accentColor),
               Padding(
                 padding: padding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      widget.item.cardPrimaryTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: widget.compact ? 12 : 14,
-                        height: 1.3,
-                        color: bodyColor,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.item.cardPrimaryTitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: widget.compact ? 12 : 14,
+                              height: 1.3,
+                              color: bodyColor,
+                            ),
+                          ),
+                        ),
+                        if (!widget.compact) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.drag_indicator_rounded,
+                            size: 16,
+                            color: colors.onSurfaceVariant.withValues(alpha: 0.65),
+                          ),
+                        ],
+                      ],
                     ),
                     if (subtitle != null) ...[
                       SizedBox(height: widget.compact ? 2 : 3),
@@ -100,7 +116,7 @@ class _ProjectBoardCardState extends State<ProjectBoardCard> {
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: widget.compact ? 10 : 11,
                           height: 1.25,
-                          color: bodyColor.withValues(alpha: 0.7),
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     ],

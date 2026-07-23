@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/agency_theme_colors.dart';
 import '../../projects/models/project_category.dart';
 
 /// Filtro de exibição na dashboard: Job e/ou Planejamento digital.
@@ -22,19 +23,23 @@ class DashboardDisplayFilter extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(10),
+        color: theme.colorScheme.surfaceContainerLow,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Exibir:',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurfaceVariant,
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 4),
+            child: Text(
+              'Exibir:',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           _FilterCheckbox(
@@ -67,47 +72,48 @@ class _FilterCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    // Borda explícita no widget: theme sozinho ainda pintava caixa preta no dark.
-    final boxSide = BorderSide(
-      width: 2.5,
-      color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF121212),
-    );
+    final colors = theme.colorScheme;
+    final accent = theme.extension<AgencyThemeColors>()?.contentAccent ?? colors.primary;
 
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 36,
-              width: 36,
-              child: Checkbox(
-                value: value,
-                onChanged: (checked) => onChanged(checked ?? false),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                side: boxSide,
-                fillColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return theme.colorScheme.primary;
-                  }
-                  return Colors.transparent;
-                }),
-                checkColor: theme.colorScheme.onPrimary,
+    return Semantics(
+      checked: value,
+      button: true,
+      label: 'Exibir $label',
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(9),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.only(left: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: value ? accent.withValues(alpha: 0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: value
+                  ? accent.withValues(alpha: 0.28)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                value ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 17,
+                color: value ? accent : colors.onSurfaceVariant,
               ),
-            ),
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: value ? FontWeight.w700 : FontWeight.w600,
+                  color: value ? colors.onSurface : colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

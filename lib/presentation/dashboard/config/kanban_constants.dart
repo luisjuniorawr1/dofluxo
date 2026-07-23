@@ -47,25 +47,25 @@ class DashboardColumnGroup {
 
 /// Cores, labels e layout do dashboard.
 abstract final class KanbanConstants {
-  static const double columnBodyRadius = 16;
-  static const double headerListGap = 11;
+  static const double columnBodyRadius = 18;
+  static const double headerListGap = 10;
   static const double firstCardTopPadding = 6;
   static const double cardVerticalGap = 4;
-  static const double columnSpacing = 12;
-  static const double stackedZoneGap = 10;
-  static const double sectionGap = 48;
+  static const double columnSpacing = 14;
+  static const double stackedZoneGap = 14;
+  static const double sectionGap = 20;
   static const double dropSlotHeight = 4;
 
-  static const int heroColumnFlex = 5;
-  static const int narrowColumnFlex = 2;
-  static const int stackedTopFlex = 14;
+  static const int heroColumnFlex = 4;
+  static const int narrowColumnFlex = 3;
+  static const int stackedTopFlex = 12;
   static const int stackedBottomFlex = 5;
 
   static const KanbanColumnConfig postagensDoDia = KanbanColumnConfig(
     id: 'postagensDoDia',
     title: 'Postagens do dia',
-    cardColor: Color(0xFFFFD600),
-    cardHeaderColor: Color(0xFFF57F17),
+    cardColor: Color(0xFFF5B942),
+    cardHeaderColor: Color(0xFFD99A17),
     acceptsDragDrop: false,
     isMirror: true,
     stackFlex: stackedTopFlex,
@@ -74,8 +74,8 @@ abstract final class KanbanConstants {
   static const KanbanColumnConfig incendio = KanbanColumnConfig(
     id: 'incendio',
     title: 'Incêndio',
-    cardColor: Color(0xFFFF5252),
-    cardHeaderColor: Color(0xFFD50000),
+    cardColor: Color(0xFFF45B69),
+    cardHeaderColor: Color(0xFFD93A4A),
     acceptsDragDrop: false,
     isMirror: true,
     stackFlex: stackedBottomFlex,
@@ -84,38 +84,38 @@ abstract final class KanbanConstants {
   static const KanbanColumnConfig jobs = KanbanColumnConfig(
     id: 'jobs',
     title: 'Jobs',
-    cardColor: Color(0xFFFF4081),
-    cardHeaderColor: Color(0xFFC51162),
+    cardColor: Color(0xFFE85D9E),
+    cardHeaderColor: Color(0xFFC93D82),
   );
 
   static const KanbanColumnConfig producao = KanbanColumnConfig(
     id: 'producao',
     title: 'Produção',
-    cardColor: Color(0xFFE040FB),
-    cardHeaderColor: Color(0xFFAA00FF),
+    cardColor: Color(0xFF8B5CF6),
+    cardHeaderColor: Color(0xFF7041D8),
   );
 
   static const KanbanColumnConfig aprovacao = KanbanColumnConfig(
     id: 'aprovacao',
     title: 'Aprovação',
-    cardColor: Color(0xFFFF9100),
-    cardHeaderColor: Color(0xFFE65100),
+    cardColor: Color(0xFFF59E0B),
+    cardHeaderColor: Color(0xFFD47F00),
     stackFlex: stackedTopFlex,
   );
 
   static const KanbanColumnConfig concluidos = KanbanColumnConfig(
     id: 'concluidos',
     title: 'Concluídos',
-    cardColor: Color(0xFFC6FF00),
-    cardHeaderColor: Color(0xFF558B2F),
+    cardColor: Color(0xFF22C55E),
+    cardHeaderColor: Color(0xFF159447),
     stackFlex: stackedBottomFlex,
   );
 
   static const KanbanColumnConfig statusPlanejamento = KanbanColumnConfig(
     id: 'statusPlanejamento',
     title: 'Status do Planejamento',
-    cardColor: Color(0xFF40C4FF),
-    cardHeaderColor: Color(0xFF0091EA),
+    cardColor: Color(0xFF38BDF8),
+    cardHeaderColor: Color(0xFF1496D4),
     acceptsDragDrop: false,
   );
 

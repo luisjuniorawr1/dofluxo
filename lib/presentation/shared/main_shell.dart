@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/agency/agency_context.dart';
+import '../../core/theme/agency_theme_colors.dart';
 import '../../core/theme/theme_provider.dart';
 import '../auth/manager/auth_service.dart';
 import '../clients/pages/clients_page.dart';
@@ -96,10 +97,19 @@ class _MainShellState extends State<MainShell> {
           ),
           if (isDesktop)
             Positioned(
-              top: 8,
-              right: 8,
-              child: ThemeToggleButton(
-                iconColor: Theme.of(context).colorScheme.onSurface,
+              top: 18,
+              right: 22,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: ThemeToggleButton(
+                  iconColor: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
         ],
@@ -109,47 +119,101 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildSidebar({bool isMobile = false}) {
     final theme = Theme.of(context);
-    final onPrimary = theme.colorScheme.onPrimary;
+    final colors = theme.colorScheme;
+    final sidebarForeground = colors.onSurface;
+    final accent = theme.extension<AgencyThemeColors>()?.contentAccent ?? colors.primary;
     final agencyName = context.select<ThemeProvider, String>((p) => p.agencyName);
 
     return Container(
-      width: 250,
-      color: theme.primaryColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      width: 268,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        border: Border(right: BorderSide(color: colors.outlineVariant)),
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            agencyName,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-              letterSpacing: -2,
-              color: onPrimary,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.22),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'DF',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
+                        ? Colors.white
+                        : const Color(0xFF111318),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      agencyName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: sidebarForeground,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'DOFLUXO · WORKSPACE',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Text(
-            'AGÊNCIA',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 4,
-              color: onPrimary.withValues(alpha: 0.8),
-            ),
-          ),
-          AgencySwitcher(onPrimary: onPrimary),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          AgencySwitcher(onPrimary: sidebarForeground),
+          Divider(color: colors.outlineVariant, height: 24),
           _navItem(0, 'Dashboard', Icons.dashboard_rounded, isMobile),
           _navItem(1, 'Clientes', Icons.business_rounded, isMobile),
           _navItem(2, 'Equipe', Icons.people_alt_rounded, isMobile),
           _navItem(3, 'Conta', Icons.person_outline_rounded, isMobile),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Expanded(
             child: SingleChildScrollView(
-              child: SidebarDeliveryCalendar(
-                onPrimary: onPrimary,
-                onProjectTap: (projectId) => _openProjectFromCalendar(projectId, isMobile: isMobile),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: SidebarDeliveryCalendar(
+                  onPrimary: sidebarForeground,
+                  onProjectTap: (projectId) =>
+                      _openProjectFromCalendar(projectId, isMobile: isMobile),
+                ),
               ),
             ),
           ),
@@ -161,14 +225,18 @@ class _MainShellState extends State<MainShell> {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               child: Row(
                 children: [
-                  Icon(Icons.logout_rounded, size: 18, color: onPrimary.withValues(alpha: 0.8)),
+                  Icon(
+                    Icons.logout_rounded,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     'Sair',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: onPrimary.withValues(alpha: 0.8),
+                      color: colors.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -183,30 +251,36 @@ class _MainShellState extends State<MainShell> {
   Widget _navItem(int index, String label, IconData icon, bool isMobile) {
     final selected = _currentIndex == index;
     final theme = Theme.of(context);
-    final onPrimary = theme.colorScheme.onPrimary;
+    final colors = theme.colorScheme;
+    final accent = theme.extension<AgencyThemeColors>()?.contentAccent ?? colors.primary;
+    final foreground = selected ? accent : colors.onSurfaceVariant;
 
     return InkWell(
       onTap: () {
         setState(() => _currentIndex = index);
         if (isMobile) Navigator.pop(context);
       },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        margin: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? onPrimary.withValues(alpha: 0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: selected ? accent.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? accent.withValues(alpha: 0.24) : Colors.transparent,
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: selected ? onPrimary : onPrimary.withValues(alpha: 0.9)),
+            Icon(icon, size: 19, color: foreground),
             const SizedBox(width: 10),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected ? onPrimary : onPrimary.withValues(alpha: 0.9),
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: foreground,
               ),
             ),
           ],
