@@ -17,11 +17,15 @@ class NewProjectDeliveryCalendar extends StatefulWidget {
     this.selectedDay,
     this.onDaySelected,
     this.onProjectTap,
+    this.previewEntries = const [],
   });
 
   final DateTime? selectedDay;
   final ValueChanged<DateTime>? onDaySelected;
   final NewProjectCalendarProjectTap? onProjectTap;
+
+  /// Cards do rascunho (Planejamento) — aparecem na hora sem fechar a janela.
+  final List<CalendarDeliveryEntry> previewEntries;
 
   @override
   State<NewProjectDeliveryCalendar> createState() =>
@@ -81,6 +85,19 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
     widget.onDaySelected?.call(DateFormatUtils.dateOnly(now));
   }
 
+  void _mergePreviewEntries(
+    Map<DateTime, List<CalendarDeliveryEntry>> grouped,
+    List<CalendarDeliveryEntry> preview,
+  ) {
+    for (final entry in preview) {
+      final key = DateFormatUtils.dateOnly(entry.deliveryDate);
+      final list = grouped.putIfAbsent(key, () => <CalendarDeliveryEntry>[]);
+      // Rascunho fica no topo do dia para o preview ser óbvio.
+      list.removeWhere((e) => e.projectId == entry.projectId);
+      list.insert(0, entry);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -133,6 +150,7 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
         final grouped = snapshot.hasData
             ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)
             : <DateTime, List<CalendarDeliveryEntry>>{};
+        _mergePreviewEntries(grouped, widget.previewEntries);
         final monthCount =
             DeliveryCalendarMapper.countInMonth(grouped, _focusedMonth);
         final selected = widget.selectedDay == null
@@ -338,7 +356,8 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
                   child: _ClickableProjectName(
                     entry: entry,
                     dense: false,
-                    onTap: widget.onProjectTap == null
+                    onTap: widget.onProjectTap == null ||
+                            entry.projectId.startsWith('draft:')
                         ? null
                         : () => widget.onProjectTap!(entry.projectId),
                   ),
@@ -439,7 +458,8 @@ class _MonthDayCell extends StatelessWidget {
                                 child: _ClickableProjectName(
                                   entry: entry,
                                   dense: true,
-                                  onTap: onProjectTap == null
+                                  onTap: onProjectTap == null ||
+                                          entry.projectId.startsWith('draft:')
                                       ? null
                                       : () => onProjectTap!(entry.projectId),
                                 ),

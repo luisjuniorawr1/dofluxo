@@ -109,9 +109,48 @@ class _DashboardPageState extends State<DashboardPage> {
 
       setState(() => _isCreatingProject = true);
 
+      final projectService = context.read<ProjectService>();
+
+      if (result.isPlanningBatch) {
+        var created = 0;
+        for (final card in result.planningCards) {
+          final projectId = _uuid.v4();
+          final docId = await projectService.addProject(
+            card.toFirestorePayload(
+              projectUuid: projectId,
+              groupTitle: result.title,
+            ),
+          );
+          if (docId != null) created++;
+        }
+
+        if (!mounted) return;
+
+        if (created == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Faça login para criar projetos.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              created == 1
+                  ? '1 post criado em "${result.title}".'
+                  : '$created posts criados em "${result.title}".',
+            ),
+          ),
+        );
+        return;
+      }
+
       final projectId = _uuid.v4();
       final docId =
-          await context.read<ProjectService>().addProject(result.toFirestorePayload(projectId));
+          await projectService.addProject(result.toFirestorePayload(projectId));
 
       if (!mounted) return;
 
