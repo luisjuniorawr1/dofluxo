@@ -45,6 +45,48 @@ class ProjectService {
     return doc.id;
   }
 
+  /// Cria N docs em `projects` numa única batch (grupo de Planejamento).
+  ///
+  /// Retorna `null` se não autenticado; lista vazia se `projectsData` vazio.
+  Future<List<String>?> addProjects(List<Map<String, dynamic>> projectsData) async {
+    if (_auth.currentUser == null || agencyId.isEmpty) return null;
+    if (projectsData.isEmpty) return [];
+
+    final batch = _db.batch();
+    final ids = <String>[];
+    final baseOrder = DateTime.now().millisecondsSinceEpoch;
+
+    for (var i = 0; i < projectsData.length; i++) {
+      final data = Map<String, dynamic>.from(projectsData[i]);
+      final requestedId = data['id'];
+      final docRef = requestedId is String && requestedId.isNotEmpty
+          ? _db.collection('projects').doc(requestedId)
+          : _db.collection('projects').doc();
+
+      final tasks = data['productionTasks'];
+      final progress = tasks is List
+          ? ProjectProductionTask.progressFromTasks(
+              ProjectProductionTask.listFromFirestore(tasks),
+            )
+          : null;
+
+      ids.add(docRef.id);
+      batch.set(docRef, {
+        ...data,
+        'id': docRef.id,
+        'agencyId': agencyId,
+        'category': data['category'] ?? ProjectCategory.job.firestoreValue,
+        'status': data['status'] ?? 'Planejamento',
+        'boardOrder': data['boardOrder'] ?? baseOrder + i,
+        'createdAt': FieldValue.serverTimestamp(),
+        if (progress != null) 'progress': progress,
+      });
+    }
+
+    await batch.commit();
+    return ids;
+  }
+
   Future<void> updateProjectStatus(String projectId, String newStatus) async {
     if (_auth.currentUser == null) return;
 

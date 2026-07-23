@@ -7,6 +7,7 @@ import '../../../core/agency/agency_context.dart';
 import '../../agency/agency_service_scope.dart';
 import '../../profile/pages/profile_page.dart';
 import '../../projects/manager/project_service.dart';
+import '../../projects/models/project_category.dart';
 import '../../projects/pages/project_detail_page.dart';
 import '../../projects/widgets/new_project_dialog.dart';
 import '../../shared/widgets/app_modal.dart';
@@ -109,9 +110,50 @@ class _DashboardPageState extends State<DashboardPage> {
 
       setState(() => _isCreatingProject = true);
 
+      final service = context.read<ProjectService>();
+
+      if (result.category == ProjectCategory.planejamento) {
+        final groupId = _uuid.v4();
+        final projectIds = [
+          for (var i = 0; i < result.planningCards.length; i++) _uuid.v4(),
+        ];
+        final createdIds = await service.addProjects(
+          result.toPlanningFirestorePayloads(
+            groupId: groupId,
+            projectIds: projectIds,
+          ),
+        );
+
+        if (!mounted) return;
+
+        if (createdIds == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Faça login para criar projetos.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          return;
+        }
+
+        if (mounted) {
+          final count = createdIds.length;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                count == 1
+                    ? 'Projeto "${result.title}" criado com sucesso!'
+                    : '$count cards de "${result.title}" criados com sucesso!',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
       final projectId = _uuid.v4();
       final docId =
-          await context.read<ProjectService>().addProject(result.toFirestorePayload(projectId));
+          await service.addProject(result.toFirestorePayload(projectId));
 
       if (!mounted) return;
 

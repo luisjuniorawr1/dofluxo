@@ -17,11 +17,15 @@ class NewProjectDeliveryCalendar extends StatefulWidget {
     this.selectedDay,
     this.onDaySelected,
     this.onProjectTap,
+    this.draftEntries = const [],
   });
 
   final DateTime? selectedDay;
   final ValueChanged<DateTime>? onDaySelected;
   final NewProjectCalendarProjectTap? onProjectTap;
+
+  /// Cards do resumo de Planejamento ainda não gravados (sobrepostos ao stream).
+  final List<CalendarDeliveryEntry> draftEntries;
 
   @override
   State<NewProjectDeliveryCalendar> createState() =>
@@ -133,6 +137,10 @@ class _NewProjectDeliveryCalendarState extends State<NewProjectDeliveryCalendar>
         final grouped = snapshot.hasData
             ? DeliveryCalendarMapper.fromSnapshot(snapshot.data!)
             : <DateTime, List<CalendarDeliveryEntry>>{};
+        for (final draft in widget.draftEntries) {
+          final dayKey = DateFormatUtils.dateOnly(draft.deliveryDate);
+          grouped.putIfAbsent(dayKey, () => []).add(draft);
+        }
         final monthCount =
             DeliveryCalendarMapper.countInMonth(grouped, _focusedMonth);
         final selected = widget.selectedDay == null

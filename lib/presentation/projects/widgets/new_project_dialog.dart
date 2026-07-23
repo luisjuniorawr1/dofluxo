@@ -6,6 +6,7 @@ import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/theme_utils.dart';
 import '../../agency/agency_service_scope.dart';
 import '../../clients/manager/client_service.dart';
+import '../../shared/models/calendar_delivery_entry.dart';
 import '../../shared/widgets/app_modal.dart';
 import '../models/planning_status.dart';
 import '../models/project_category.dart';
@@ -37,11 +38,32 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
   DateTime? _scheduledDate;
   String _selectedFormat = PlanningFormat.options.first;
   PlanningStatus _planningStatus = PlanningStatus.all.first;
+  final List<PlanningCardDraft> _planningCards = [];
 
   bool get _isPlanejamento => _category == ProjectCategory.planejamento;
 
   DateTime? get _calendarSelectedDay =>
       _isPlanejamento ? _scheduledDate : _expectedDeliveryDate;
+
+  List<CalendarDeliveryEntry> get _draftCalendarEntries {
+    if (!_isPlanejamento || _planningCards.isEmpty) {
+      return const [];
+    }
+    final groupTitle = _titleController.text.trim();
+    return [
+      for (var i = 0; i < _planningCards.length; i++)
+        CalendarDeliveryEntry(
+          projectId: 'draft-$i',
+          title: groupTitle.isEmpty ? 'Novo card' : groupTitle,
+          deliveryDate: DateFormatUtils.dateOnly(_planningCards[i].scheduledDate),
+          clientName: _selectedClientName,
+          statusLabel: _planningCards[i].planningStatus.label,
+          primaryTitle: groupTitle.isEmpty
+              ? _planningCards[i].format
+              : '$groupTitle · ${_planningCards[i].format}',
+        ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -80,6 +102,8 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
   }
 
   Future<void> _openProjectFromCalendar(String projectId) async {
+    if (projectId.startsWith('draft-')) return;
+
     await showAppModalPage(
       context: context,
       size: AppModalSize.large,
@@ -90,15 +114,92 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     );
   }
 
-  void _submit() {
+  void _addPlanningCard() {
     final theme = Theme.of(context);
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    if (_isPlanejamento && _scheduledDate == null) {
+    final title = _titleController.text.trim();
+    if (_selectedClientId == null || _selectedClientId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Selecione um cliente.'),
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
+      return;
+    }
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Informe o nome do projeto.'),
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
+      return;
+    }
+    if (_scheduledDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Selecione a data do post.'),
           backgroundColor: theme.colorScheme.error,
+        ),
+      );
+      return;
+    }
+    final description = _descriptionController.text.trim();
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Informe a descrição.'),
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _planningCards.add(
+        PlanningCardDraft(
+          scheduledDate: DateFormatUtils.dateOnly(_scheduledDate!),
+          format: _resolvedFormat,
+          description: description,
+          reference: _referenceController.text.trim(),
+          planningStatus: _planningStatus,
+        ),
+      );
+      _scheduledDate = null;
+      _descriptionController.clear();
+      _referenceController.clear();
+    });
+  }
+
+  void _removePlanningCard(int index) {
+    setState(() => _planningCards.removeAt(index));
+  }
+
+  void _submit() {
+    final theme = Theme.of(context);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_isPlanejamento) {
+      if (_planningCards.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Adicione pelo menos um card ao resumo.'),
+            backgroundColor: theme.colorScheme.error,
+          ),
+        );
+        return;
+      }
+
+      Navigator.pop(
+        context,
+        NewProjectResult(
+          category: _category,
+          title: _titleController.text.trim(),
+          description: '',
+          clientId: _selectedClientId!,
+          clientName: _selectedClientName ?? '',
+          tasks: const [],
+          planningCards: List<PlanningCardDraft>.from(_planningCards),
         ),
       );
       return;
@@ -112,11 +213,8 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         description: _descriptionController.text.trim(),
         clientId: _selectedClientId!,
         clientName: _selectedClientName ?? '',
-        tasks: _isPlanejamento ? const [] : _tasks,
-        expectedDeliveryDate: _isPlanejamento ? _scheduledDate : _expectedDeliveryDate,
-        format: _isPlanejamento ? _resolvedFormat : null,
-        reference: _isPlanejamento ? _referenceController.text.trim() : null,
-        planningStatus: _isPlanejamento ? _planningStatus : null,
+        tasks: _tasks,
+        expectedDeliveryDate: _expectedDeliveryDate,
       ),
     );
   }
@@ -146,6 +244,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                             selectedDay: _calendarSelectedDay,
                             onDaySelected: _onCalendarDaySelected,
                             onProjectTap: _openProjectFromCalendar,
+                            draftEntries: _draftCalendarEntries,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -164,6 +263,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                             selectedDay: _calendarSelectedDay,
                             onDaySelected: _onCalendarDaySelected,
                             onProjectTap: _openProjectFromCalendar,
+                            draftEntries: _draftCalendarEntries,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -228,8 +328,12 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                           )
                           .toList(),
                       selected: {_category},
-                      onSelectionChanged: (values) =>
-                          setState(() => _category = values.first),
+                      onSelectionChanged: (values) => setState(() {
+                        _category = values.first;
+                        if (_category != ProjectCategory.planejamento) {
+                          _planningCards.clear();
+                        }
+                      }),
                     ),
                     const SizedBox(height: 20),
                     _buildClientField(),
@@ -423,6 +527,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           labelText: 'Nome do projeto',
           border: OutlineInputBorder(),
         ),
+        onChanged: (_) => setState(() {}),
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
             return 'Informe o nome do projeto';
@@ -433,7 +538,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
       const SizedBox(height: 16),
       ExpectedDeliveryDateField(
         value: _scheduledDate,
-        required: true,
+        required: false,
         labelText: 'Data',
         helpText: 'Data do post',
         onChanged: (date) => setState(() => _scheduledDate = date),
@@ -473,12 +578,6 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           border: OutlineInputBorder(),
           alignLabelWithHint: true,
         ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Informe a descrição';
-          }
-          return null;
-        },
       ),
       const SizedBox(height: 16),
       TextFormField(
@@ -506,8 +605,77 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           );
         }).toList(),
       ),
+      const SizedBox(height: 16),
+      OutlinedButton.icon(
+        onPressed: _addPlanningCard,
+        icon: const Icon(Icons.add),
+        label: const Text('Adicionar ao resumo'),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        'Resumo (${_planningCards.length})',
+        style: ThemeUtils.sectionTitle(context),
+      ),
+      const SizedBox(height: 8),
+      if (_planningCards.isEmpty)
+        Text(
+          'Nenhum card ainda. Preencha os campos e adicione ao resumo.',
+          style: ThemeUtils.bodyMuted(context),
+        )
+      else
+        ...List.generate(_planningCards.length, (index) {
+          final card = _planningCards[index];
+          final ref = card.reference.trim();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: theme.colorScheme.outline),
+              ),
+              title: Text(
+                '${DateFormatUtils.formatDayMonthYear(card.scheduledDate)} · ${card.format}',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: Text(
+                [
+                  card.planningStatus.label,
+                  card.description,
+                  if (ref.isNotEmpty) ref,
+                ].join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: IconButton(
+                tooltip: 'Remover',
+                onPressed: () => _removePlanningCard(index),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          );
+        }),
     ];
   }
+}
+
+/// Card de Planejamento acumulado no resumo antes de gravar.
+class PlanningCardDraft {
+  const PlanningCardDraft({
+    required this.scheduledDate,
+    required this.format,
+    required this.description,
+    required this.planningStatus,
+    this.reference = '',
+  });
+
+  final DateTime scheduledDate;
+  final String format;
+  final String description;
+  final String reference;
+  final PlanningStatus planningStatus;
 }
 
 class NewProjectResult {
@@ -522,6 +690,7 @@ class NewProjectResult {
     this.format,
     this.reference,
     this.planningStatus,
+    this.planningCards = const [],
   });
 
   final ProjectCategory category;
@@ -534,6 +703,9 @@ class NewProjectResult {
   final String? format;
   final String? reference;
   final PlanningStatus? planningStatus;
+
+  /// Cards do grupo de Planejamento (1 item = 1 doc em `projects`).
+  final List<PlanningCardDraft> planningCards;
 
   Map<String, dynamic> toFirestorePayload(String projectUuid) {
     final deliveryTimestamp = DateFormatUtils.toFirestoreTimestamp(expectedDeliveryDate);
@@ -570,5 +742,42 @@ class NewProjectResult {
       if (progress != null) 'progress': progress,
       if (deliveryTimestamp != null) 'expectedDeliveryDate': deliveryTimestamp,
     };
+  }
+
+  /// Payloads do grupo: mesmo `groupId`/`groupTitle`/`title`/`clientId`.
+  List<Map<String, dynamic>> toPlanningFirestorePayloads({
+    required String groupId,
+    required List<String> projectIds,
+  }) {
+    assert(projectIds.length == planningCards.length);
+    final groupTitle = title.trim();
+    final baseOrder = DateTime.now().millisecondsSinceEpoch;
+    final payloads = <Map<String, dynamic>>[];
+
+    for (var i = 0; i < planningCards.length; i++) {
+      final card = planningCards[i];
+      final deliveryTimestamp =
+          DateFormatUtils.toFirestoreTimestamp(card.scheduledDate);
+      final ref = card.reference.trim();
+      payloads.add({
+        'id': projectIds[i],
+        'groupId': groupId,
+        'groupTitle': groupTitle,
+        'category': ProjectCategory.planejamento.firestoreValue,
+        'title': groupTitle,
+        'description': card.description,
+        'clientId': clientId,
+        'clientName': clientName,
+        'format': card.format,
+        if (ref.isNotEmpty) 'reference': ref,
+        'planningStatus': card.planningStatus.firestoreValue,
+        'status': 'Planejamento',
+        'boardOrder': baseOrder + i,
+        if (deliveryTimestamp != null) 'scheduledDate': deliveryTimestamp,
+        if (deliveryTimestamp != null) 'expectedDeliveryDate': deliveryTimestamp,
+      });
+    }
+
+    return payloads;
   }
 }

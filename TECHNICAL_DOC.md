@@ -449,7 +449,7 @@ getProjectsStream()
 
 **Job** → Firestore: `category: job`, `title`, `description`, `clientId`, `clientName`, `productionTasks[]`, `progress`, `expectedDeliveryDate`, `status: Planejamento`.
 
-**Planejamento digital** → `category: planejamento`, `format`, `reference`, `planningStatus`, `scheduledDate` (+ espelho `expectedDeliveryDate`), `description`, `title` opcional.
+**Planejamento digital** → `category: planejamento`, `format`, `reference`, `planningStatus`, `scheduledDate` (+ espelho `expectedDeliveryDate`), `description`, `title` do grupo. Multi-card no Novo Projeto: N docs com o mesmo `groupId` + `groupTitle` (batch via `ProjectService.addProjects`). **Não** coleção `planning_posts`.
 
 ### Detalhe — `ProjectDetailPage`
 

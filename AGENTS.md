@@ -55,6 +55,7 @@ O dono do produto **não** vai relembrar o que já foi feito a cada tarefa. Cabe
 | D8 | Aviso de atualização web: banner canto inferior direito com graça de 5 min — **não** overlay fullscreen bloqueante | `app_update_gate.dart` |
 | D9 | Convite por código `DFX-XXXX-XXXX` (Membro/Admin) — não forçar criar agência no 1º login | agency / team / invite |
 | D10 | **Tudo que abre para ver/editar/criar/confirmar é JANELA modal** (`showAppModal` / `showAppModalPage` / `showAppConfirmModal`) com blur — **não** `Navigator.push`, `showDialog`/`AlertDialog` solto nem bottom sheet. **Exceção:** páginas da sidebar (Dashboard, Clientes, Equipe, Conta) no `MainShell`. **Altura:** acompanha o conteúdo por padrão; altura fixa só quando o layout precisa de `Expanded` (ex.: Novo Projeto `wide`). Páginas reutilizadas detectam modal via `AppModalScope`. | `app_modal.dart` + qualquer abertura interna |
+| D11 | **Grupo de Planejamento multi-card:** vários posts no Novo Projeto = vários docs em `projects` (`category: planejamento`) com o mesmo `groupId` + `groupTitle` (= `title`). **Não** coleção `planning_posts`. 1 card no board = 1 projeto. | `new_project_dialog.dart`, `project_service.dart` |
 
 Ao travar uma nova decisão: atualize esta tabela **e** `NEXT_STEPS.md` no mesmo PR.
 

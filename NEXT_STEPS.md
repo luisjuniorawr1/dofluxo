@@ -88,6 +88,7 @@ Complementa [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) e [`TECHNICAL_DOC.md`](TE
 17. **Update web** — banner canto inferior direito com 5 min de graça; **não** overlay fullscreen bloqueante.
 18. **Convite por código** (`DFX-XXXX-XXXX`) para entrar em agência; no 1º login o usuário pode **criar** agência **ou entrar** com código.
 19. **Aberturas internas = janela modal** — ver/editar/criar/confirmar usa `showAppModal` / `showAppModalPage` / `showAppConfirmModal` (blur + `AppModalShell`). **Não** usar `Navigator.push`, `AlertDialog` solto nem bottom sheet. **Exceção:** páginas da sidebar (Dashboard, Clientes, Equipe, Conta). Janelas **encolhem ao conteúdo** por padrão; altura fixa só com layout `Expanded` (Novo Projeto `wide`). Ver `AGENTS.md` D10.
+20. **Grupo de Planejamento multi-card** — no Novo Projeto, vários cards do resumo viram N docs em `projects` com o mesmo `groupId`/`groupTitle` (`title` do grupo). **Não** criar coleção `planning_posts`. Ver `AGENTS.md` D11.
 
 ---
 
