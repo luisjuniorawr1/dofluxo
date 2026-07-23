@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/agency/agency_context.dart';
 import '../../../core/agency/utils/invite_code_generator.dart';
+import '../../shared/widgets/app_modal.dart';
 
 /// Resgata código de convite para entrar em uma agência.
 class JoinAgencyPage extends StatefulWidget {
@@ -84,6 +85,106 @@ class _JoinAgencyPageState extends State<JoinAgencyPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSubmitting = _isSubmitting;
+    final inModal = AppModalScope.isOf(context);
+
+    final form = Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.isFirstAgency && !inModal) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Voltar',
+              ),
+            ),
+          ],
+          Icon(Icons.vpn_key_outlined, size: 48, color: theme.colorScheme.primary),
+          const SizedBox(height: 16),
+          Text(
+            'Código de convite',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Cole o código que você recebeu da agência. '
+            'Sua função (membro ou admin) já vem definida no convite.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _errorMessage!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _codeController,
+            enabled: !isSubmitting,
+            decoration: const InputDecoration(
+              labelText: 'Código',
+              hintText: 'DFX-XXXX-XXXX',
+              border: OutlineInputBorder(),
+            ),
+            textCapitalization: TextCapitalization.characters,
+            textInputAction: TextInputAction.done,
+            validator: (value) {
+              final code = value?.trim() ?? '';
+              if (code.isEmpty) return 'Informe o código de convite.';
+              if (!isValidInviteCodeFormat(code)) {
+                return 'Formato inválido. Use DFX-XXXX-XXXX.';
+              }
+              return null;
+            },
+            onFieldSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: isSubmitting ? null : _submit,
+            child: isSubmitting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Entrar na agência'),
+          ),
+        ],
+      ),
+    );
+
+    if (inModal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!widget.isFirstAgency)
+            const AppModalHeader(title: 'Entrar em uma agência'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: form,
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: widget.isFirstAgency
@@ -94,88 +195,7 @@ class _JoinAgencyPageState extends State<JoinAgencyPage> {
           padding: const EdgeInsets.all(32),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.isFirstAgency) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back),
-                        tooltip: 'Voltar',
-                      ),
-                    ),
-                  ],
-                  Icon(Icons.vpn_key_outlined, size: 56, color: theme.colorScheme.primary),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Código de convite',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Cole o código que você recebeu da agência. '
-                    'Sua função (membro ou admin) já vem definida no convite.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _errorMessage!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _codeController,
-                    enabled: !isSubmitting,
-                    decoration: const InputDecoration(
-                      labelText: 'Código',
-                      hintText: 'DFX-XXXX-XXXX',
-                      border: OutlineInputBorder(),
-                    ),
-                    textCapitalization: TextCapitalization.characters,
-                    textInputAction: TextInputAction.done,
-                    validator: (value) {
-                      final code = value?.trim() ?? '';
-                      if (code.isEmpty) return 'Informe o código de convite.';
-                      if (!isValidInviteCodeFormat(code)) {
-                        return 'Formato inválido. Use DFX-XXXX-XXXX.';
-                      }
-                      return null;
-                    },
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: isSubmitting ? null : _submit,
-                    child: isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Entrar na agência'),
-                  ),
-                ],
-              ),
-            ),
+            child: form,
           ),
         ),
       ),

@@ -121,6 +121,113 @@ class _AgencyOnboardingPageState extends State<AgencyOnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final inModal = AppModalScope.isOf(context);
+
+    final form = Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(Icons.storefront_outlined, size: 48, color: theme.colorScheme.primary),
+          const SizedBox(height: 16),
+          Text(
+            widget.isAdditional ? 'Nova agência' : 'Configure sua agência',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.isAdditional
+                ? 'Crie outro workspace para um cliente ou operação separada.'
+                : 'Crie sua primeira agência para começar a gerenciar projetos e clientes.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _errorMessage!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _nameController,
+            enabled: !_isSubmitting,
+            decoration: const InputDecoration(
+              labelText: 'Nome da agência',
+              border: OutlineInputBorder(),
+            ),
+            textInputAction: TextInputAction.done,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Informe o nome da agência';
+              }
+              return null;
+            },
+            onFieldSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 16),
+          Text('Cor principal', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Selecionar cor'),
+            subtitle: Text(
+              'Usada na sidebar e no tema do app',
+              style: ThemeUtils.bodyMuted(context),
+            ),
+            trailing: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _primaryColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+            ),
+            onTap: _isSubmitting ? null : _pickColor,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _isSubmitting ? null : _submit,
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Criar agência'),
+          ),
+        ],
+      ),
+    );
+
+    if (inModal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.isAdditional) const AppModalHeader(title: 'Criar agência'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: form,
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: widget.isAdditional
@@ -131,101 +238,7 @@ class _AgencyOnboardingPageState extends State<AgencyOnboardingPage> {
           padding: const EdgeInsets.all(32),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.storefront_outlined, size: 56, color: theme.colorScheme.primary),
-                  const SizedBox(height: 24),
-                  Text(
-                    widget.isAdditional
-                        ? 'Nova agência'
-                        : 'Configure sua agência',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.isAdditional
-                        ? 'Crie outro workspace para um cliente ou operação separada.'
-                        : 'Crie sua primeira agência para começar a gerenciar projetos e clientes.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _errorMessage!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _nameController,
-                    enabled: !_isSubmitting,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome da agência',
-                      border: OutlineInputBorder(),
-                    ),
-                    textInputAction: TextInputAction.done,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Informe o nome da agência';
-                      }
-                      return null;
-                    },
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Cor principal',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Selecionar cor'),
-                    subtitle: Text(
-                      'Usada na sidebar e no tema do app',
-                      style: ThemeUtils.bodyMuted(context),
-                    ),
-                    trailing: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _primaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: theme.colorScheme.outlineVariant),
-                      ),
-                    ),
-                    onTap: _isSubmitting ? null : _pickColor,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _submit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Criar agência'),
-                  ),
-                ],
-              ),
-            ),
+            child: form,
           ),
         ),
       ),

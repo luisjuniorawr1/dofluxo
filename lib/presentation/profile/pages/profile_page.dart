@@ -80,111 +80,130 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final inModal = AppModalScope.isOf(context);
+
+    final form = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _agencyNameController,
+          decoration: const InputDecoration(
+            labelText: 'Nome da Agência',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Cor Principal da Marca',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Selecionar cor',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
+          subtitle: Text(
+            'Alterações são salvas em agencies/{activeAgencyId}',
+            style: ThemeUtils.bodyMuted(context),
+          ),
+          trailing: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _tempColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onTap: () async {
+            final color = await showAppColorPickerModal(
+              context: context,
+              initialColor: _tempColor,
+            );
+            if (color != null && mounted) {
+              setState(() => _tempColor = color);
+            }
+          },
+        ),
+        const SizedBox(height: 28),
+        Text(
+          'Minhas agências',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Entre em um cliente com código de convite ou crie outro workspace.',
+          style: ThemeUtils.bodyMuted(context),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () {
+            showAppModalPage(
+              context: context,
+              size: AppModalSize.medium,
+              child: const JoinAgencyPage(),
+            );
+          },
+          icon: const Icon(Icons.vpn_key_outlined),
+          label: const Text('Entrar em uma agência'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () {
+            showAppModalPage(
+              context: context,
+              size: AppModalSize.medium,
+              child: const AgencyOnboardingPage(isAdditional: true),
+            );
+          },
+          icon: const Icon(Icons.add_business_outlined),
+          label: const Text('Criar nova agência'),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _saveSettings,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Salvar Alterações', style: TextStyle(fontSize: 16)),
+          ),
+        ),
+      ],
+    );
+
+    if (inModal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AppModalHeader(title: 'Configurações da Agência'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: form,
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações da Agência')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _agencyNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome da Agência',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Cor Principal da Marca',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'Selecionar cor',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  ),
-                  subtitle: Text(
-                    'Alterações são salvas em agencies/{activeAgencyId}',
-                    style: ThemeUtils.bodyMuted(context),
-                  ),
-                  trailing: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _tempColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onTap: () async {
-                    final color = await showAppColorPickerModal(
-                      context: context,
-                      initialColor: _tempColor,
-                    );
-                    if (color != null && mounted) {
-                      setState(() => _tempColor = color);
-                    }
-                  },
-                ),
-                const SizedBox(height: 40),
-                Text(
-                  'Minhas agências',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Entre em um cliente com código de convite ou crie outro workspace.',
-                  style: ThemeUtils.bodyMuted(context),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    showAppModalPage(
-                      context: context,
-                      size: AppModalSize.medium,
-                      child: const JoinAgencyPage(),
-                    );
-                  },
-                  icon: const Icon(Icons.vpn_key_outlined),
-                  label: const Text('Entrar em uma agência'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    showAppModalPage(
-                      context: context,
-                      size: AppModalSize.medium,
-                      child: const AgencyOnboardingPage(isAdditional: true),
-                    );
-                  },
-                  icon: const Icon(Icons.add_business_outlined),
-                  label: const Text('Criar nova agência'),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveSettings,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Salvar Alterações', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-              ],
-            ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: form,
           ),
         ),
       ),

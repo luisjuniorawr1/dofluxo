@@ -12,6 +12,7 @@ import '../manager/project_service.dart';
 import '../models/project_production_task.dart';
 import '../widgets/expected_delivery_date_field.dart';
 import '../widgets/planning_status_chip.dart';
+import '../../shared/widgets/app_modal.dart';
 class ProjectDetailPage extends StatefulWidget {
   const ProjectDetailPage({
     super.key,
@@ -256,6 +257,94 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final inModal = AppModalScope.isOf(context);
+
+    final body = StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: context.read<ProjectService>().getProjectStream(widget.projectId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Erro: ${snapshot.error}'),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(48),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final doc = snapshot.data!;
+        if (!doc.exists) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Projeto não encontrado.'),
+          );
+        }
+
+        final data = doc.data() ?? {};
+        if (!_initialized) {
+          _syncFromData(data);
+          _initialized = true;
+        }
+
+        final progress = ProjectProductionTask.progressFromTasks(_tasks);
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildCategoryBadge(context),
+              const SizedBox(height: 16),
+              if (_isPlanejamento)
+                ..._buildPlanejamentoFields(context)
+              else
+                ..._buildJobFields(context, progress),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _isSaving
+                    ? null
+                    : () => _save(closeOnSuccess: false, showSnackBar: true),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Text('Salvar alterações'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (inModal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppModalHeader(
+            title: 'Detalhes do Projeto',
+            actions: [
+              TextButton(
+                onPressed: _isSaving ? null : () => _save(closeOnSuccess: true),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Salvar'),
+              ),
+            ],
+          ),
+          body,
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalhes do Projeto'),
@@ -272,58 +361,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           ),
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: context.read<ProjectService>().getProjectStream(widget.projectId),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro: ${snapshot.error}'));
-          }
-
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final doc = snapshot.data!;
-          if (!doc.exists) {
-            return const Center(child: Text('Projeto não encontrado.'));
-          }
-
-          final data = doc.data() ?? {};
-          if (!_initialized) {
-            _syncFromData(data);
-            _initialized = true;
-          }
-
-          final progress = ProjectProductionTask.progressFromTasks(_tasks);
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildCategoryBadge(context),
-                    const SizedBox(height: 16),
-                    if (_isPlanejamento)
-                      ..._buildPlanejamentoFields(context)
-                    else
-                      ..._buildJobFields(context, progress),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _isSaving ? null : () => _save(closeOnSuccess: false, showSnackBar: true),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Text('Salvar alterações'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+      body: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: body,
+          ),
+        ),
       ),
     );
   }

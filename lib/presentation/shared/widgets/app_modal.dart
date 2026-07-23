@@ -18,6 +18,19 @@ enum AppModalSize {
   wide,
 }
 
+/// Indica que o widget está dentro de um [AppModalShell].
+/// Páginas reutilizadas (Profile, Cliente, etc.) usam isso para layout embutido.
+class AppModalScope extends InheritedWidget {
+  const AppModalScope({super.key, required super.child});
+
+  static bool isOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AppModalScope>() != null;
+  }
+
+  @override
+  bool updateShouldNotify(covariant AppModalScope oldWidget) => false;
+}
+
 /// Abre conteúdo interno como JANELA modal com fundo desfocado.
 ///
 /// Menu da sidebar (Dashboard, Clientes, Equipe, Conta) continua em páginas.
@@ -81,11 +94,9 @@ Future<Color?> showAppColorPickerModal({
                 AppModalHeader(title: title),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: SingleChildScrollView(
-                    child: BlockPicker(
-                      pickerColor: selected,
-                      onColorChanged: (c) => setLocal(() => selected = c),
-                    ),
+                  child: BlockPicker(
+                    pickerColor: selected,
+                    onColorChanged: (c) => setLocal(() => selected = c),
                   ),
                 ),
                 AppModalFooter(
@@ -221,18 +232,25 @@ class _AppModalRouteBody extends StatelessWidget {
 }
 
 /// Painel arredondado — mesma família visual do Novo Projeto.
+///
+/// Por padrão a altura acompanha o conteúdo (sem folga vazia).
+/// [AppModalSize.wide] (Novo Projeto) e [shrinkWrap]: false usam altura fixa
+/// para layouts com [Expanded].
 class AppModalShell extends StatelessWidget {
   const AppModalShell({
     super.key,
     required this.child,
     this.size = AppModalSize.medium,
-    this.shrinkWrap = false,
+    this.shrinkWrap = true,
     this.maxHeightFactor = 0.94,
     this.contentPadding,
   });
 
   final Widget child;
   final AppModalSize size;
+
+  /// Se true (padrão), a janela encolhe ao conteúdo até [maxHeightFactor].
+  /// Se false, ocupa a altura máxima (útil com Expanded).
   final bool shrinkWrap;
   final double maxHeightFactor;
   final EdgeInsetsGeometry? contentPadding;
@@ -262,6 +280,14 @@ class AppModalShell extends StatelessWidget {
     final horizontalInset = size == AppModalSize.wide
         ? (isWideScreen ? 12.0 : 16.0)
         : 16.0;
+    // Novo Projeto precisa de altura fixa (calendário + Expanded).
+    final fillHeight = !shrinkWrap || size == AppModalSize.wide;
+
+    final scopedChild = AppModalScope(
+      child: contentPadding == null
+          ? child
+          : Padding(padding: contentPadding!, child: child),
+    );
 
     final panel = Material(
       color: scheme.surface,
@@ -269,9 +295,9 @@ class AppModalShell extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
-      child: contentPadding == null
-          ? child
-          : Padding(padding: contentPadding!, child: child),
+      child: fillHeight
+          ? scopedChild
+          : SingleChildScrollView(child: scopedChild),
     );
 
     return Padding(
@@ -282,13 +308,13 @@ class AppModalShell extends StatelessWidget {
           maxHeight: maxHeight,
           minWidth: size == AppModalSize.wide && isWideScreen ? maxWidth : 0,
         ),
-        child: shrinkWrap
-            ? panel
-            : SizedBox(
+        child: fillHeight
+            ? SizedBox(
                 width: maxWidth,
                 height: maxHeight,
                 child: panel,
-              ),
+              )
+            : panel,
       ),
     );
   }
