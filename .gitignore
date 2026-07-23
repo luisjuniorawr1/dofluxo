@@ -48,3 +48,6 @@ app.*.map.json
 scripts/serviceAccountKey.json
 **/*serviceAccount*.json
 **/*firebase-adminsdk*.json
+
+# Cache local do Firebase Hosting (gerado no deploy; não versionar)
+.firebase/
