@@ -214,7 +214,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
       if (_draftCards.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Adicione ao menos um card no resumo (botão ADD).'),
+            content: const Text('Adicione ao menos um card no resumo (botão Adicionar).'),
             backgroundColor: theme.colorScheme.error,
           ),
         );
@@ -572,7 +572,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
           border: OutlineInputBorder(),
         ),
         validator: (value) {
-          // Validado no Criar; no ADD o grupo pode já estar preenchido.
+          // Validado no Criar; no Adicionar o grupo pode já estar preenchido.
           return null;
         },
       ),
@@ -670,7 +670,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         child: FilledButton.tonalIcon(
           onPressed: _addOrUpdateDraftCard,
           icon: Icon(_isEditingDraft ? Icons.check_rounded : Icons.add_rounded),
-          label: Text(_isEditingDraft ? 'Atualizar card' : 'ADD'),
+          label: Text(_isEditingDraft ? 'Atualizar card' : 'Adicionar'),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             textStyle: theme.textTheme.titleMedium?.copyWith(
@@ -729,7 +729,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
             const SizedBox(height: 10),
             if (_draftCards.isEmpty)
               Text(
-                'Preencha o card e toque em ADD. Ele entra aqui e no calendário.',
+                'Preencha o card e toque em Adicionar. Ele entra aqui e no calendário.',
                 style: ThemeUtils.bodyMuted(context),
               )
             else
