@@ -17,14 +17,12 @@ class ClientsPage extends StatefulWidget {
 
 class _ClientsPageState extends State<ClientsPage> {
   Future<void> _openClientForm({String? docId, Map<String, dynamic>? initialData}) async {
-    await showAppModal<bool>(
+    await showAppModalPage(
       context: context,
-      builder: (dialogContext) => AppModalShell(
-        size: AppModalSize.large,
-        child: AgencyServiceScope.wrapRoute(
-          context,
-          ClientFormPage(docId: docId, initialData: initialData),
-        ),
+      size: AppModalSize.large,
+      child: AgencyServiceScope.wrapRoute(
+        context,
+        ClientFormPage(docId: docId, initialData: initialData),
       ),
     );
   }

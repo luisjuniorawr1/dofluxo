@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/app_modal.dart';
 import 'agency_onboarding_page.dart';
 import 'join_agency_page.dart';
 
@@ -8,20 +9,18 @@ class AgencyWelcomePage extends StatelessWidget {
   const AgencyWelcomePage({super.key});
 
   void _openCreate(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const AgencyOnboardingPage(),
-      ),
+    showAppModalPage(
+      context: context,
+      size: AppModalSize.medium,
+      child: const AgencyOnboardingPage(),
     );
   }
 
   void _openJoin(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const JoinAgencyPage(isFirstAgency: true),
-      ),
+    showAppModalPage(
+      context: context,
+      size: AppModalSize.medium,
+      child: const JoinAgencyPage(isFirstAgency: true),
     );
   }
 

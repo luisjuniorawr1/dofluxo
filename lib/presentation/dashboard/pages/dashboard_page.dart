@@ -77,24 +77,20 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _openProfileSettings() async {
-    await showAppModal<void>(
+    await showAppModalPage(
       context: context,
-      builder: (dialogContext) => const AppModalShell(
-        size: AppModalSize.large,
-        child: ProfilePage(),
-      ),
+      size: AppModalSize.large,
+      child: const ProfilePage(),
     );
   }
 
   Future<void> _openProject(String projectId) async {
-    await showAppModal<void>(
+    await showAppModalPage(
       context: context,
-      builder: (dialogContext) => AppModalShell(
-        size: AppModalSize.large,
-        child: AgencyServiceScope.wrapRoute(
-          context,
-          ProjectDetailPage(projectId: projectId),
-        ),
+      size: AppModalSize.large,
+      child: AgencyServiceScope.wrapRoute(
+        context,
+        ProjectDetailPage(projectId: projectId),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 /// Tamanhos da família visual da janela de Novo Projeto.
 enum AppModalSize {
@@ -39,6 +40,70 @@ Future<T?> showAppModal<T>({
         animation: animation,
         barrierDismissible: barrierDismissible,
         child: builder(dialogContext),
+      );
+    },
+  );
+}
+
+/// Atalho: painel [AppModalShell] + conteúdo (páginas de form/detalhe).
+Future<T?> showAppModalPage<T>({
+  required BuildContext context,
+  required Widget child,
+  AppModalSize size = AppModalSize.medium,
+  bool barrierDismissible = true,
+}) {
+  return showAppModal<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    builder: (_) => AppModalShell(size: size, child: child),
+  );
+}
+
+/// Seletor de cor no mesmo shell (substitui AlertDialog + BlockPicker).
+Future<Color?> showAppColorPickerModal({
+  required BuildContext context,
+  required Color initialColor,
+  String title = 'Escolha a cor',
+}) {
+  var selected = initialColor;
+  return showAppModal<Color>(
+    context: context,
+    builder: (dialogContext) {
+      return AppModalShell(
+        size: AppModalSize.compact,
+        shrinkWrap: true,
+        child: StatefulBuilder(
+          builder: (context, setLocal) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppModalHeader(title: title),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: SingleChildScrollView(
+                    child: BlockPicker(
+                      pickerColor: selected,
+                      onColorChanged: (c) => setLocal(() => selected = c),
+                    ),
+                  ),
+                ),
+                AppModalFooter(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancelar'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, selected),
+                      child: const Text('Confirmar'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
       );
     },
   );

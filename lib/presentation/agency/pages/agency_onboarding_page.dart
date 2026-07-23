@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/agency/agency_context.dart';
 import '../../../core/agency/models/agency.dart';
 import '../../../core/utils/theme_utils.dart';
+import '../../shared/widgets/app_modal.dart';
 
 /// Wizard de criação da primeira agência (usuário sem membership).
 class AgencyOnboardingPage extends StatefulWidget {
@@ -108,24 +108,14 @@ class _AgencyOnboardingPageState extends State<AgencyOnboardingPage> {
   }
 
   Future<void> _pickColor() async {
-    await showDialog<void>(
+    final color = await showAppColorPickerModal(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cor da agência'),
-        content: SingleChildScrollView(
-          child: BlockPicker(
-            pickerColor: _primaryColor,
-            onColorChanged: (color) => setState(() => _primaryColor = color),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
+      initialColor: _primaryColor,
+      title: 'Cor da agência',
     );
+    if (color != null && mounted) {
+      setState(() => _primaryColor = color);
+    }
   }
 
   @override

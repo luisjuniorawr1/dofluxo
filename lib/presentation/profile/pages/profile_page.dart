@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../../../core/agency/agency_context.dart';
 import '../../../core/theme/app_theme.dart';
@@ -8,6 +7,7 @@ import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/theme_utils.dart';
 import '../../agency/pages/agency_onboarding_page.dart';
 import '../../agency/pages/join_agency_page.dart';
+import '../../shared/widgets/app_modal.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -122,24 +122,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Escolha a cor'),
-                      content: SingleChildScrollView(
-                        child: BlockPicker(
-                          pickerColor: _tempColor,
-                          onColorChanged: (c) => setState(() => _tempColor = c),
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Confirmar'),
-                        ),
-                      ],
-                    ),
-                  ),
+                  onTap: () async {
+                    final color = await showAppColorPickerModal(
+                      context: context,
+                      initialColor: _tempColor,
+                    );
+                    if (color != null && mounted) {
+                      setState(() => _tempColor = color);
+                    }
+                  },
                 ),
                 const SizedBox(height: 40),
                 Text(
@@ -156,11 +147,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => const JoinAgencyPage(),
-                      ),
+                    showAppModalPage(
+                      context: context,
+                      size: AppModalSize.medium,
+                      child: const JoinAgencyPage(),
                     );
                   },
                   icon: const Icon(Icons.vpn_key_outlined),
@@ -169,11 +159,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => const AgencyOnboardingPage(isAdditional: true),
-                      ),
+                    showAppModalPage(
+                      context: context,
+                      size: AppModalSize.medium,
+                      child: const AgencyOnboardingPage(isAdditional: true),
                     );
                   },
                   icon: const Icon(Icons.add_business_outlined),

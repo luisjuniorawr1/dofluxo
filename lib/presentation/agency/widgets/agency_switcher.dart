@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/agency/agency_context.dart';
+import '../../shared/widgets/app_modal.dart';
 
 /// Troca de agência ativa na sidebar (2+ memberships).
 class AgencySwitcher extends StatelessWidget {
@@ -82,49 +83,57 @@ class AgencySwitcher extends StatelessWidget {
     );
   }
 
-  void _showAgencyMenu(
+  Future<void> _showAgencyMenu(
     BuildContext context,
     AgencyContext agencyContext,
     String? activeId,
   ) {
-    showModalBottomSheet<void>(
+    return showAppModal<void>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return SafeArea(
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
+        return AppModalShell(
+          size: AppModalSize.compact,
+          shrinkWrap: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: Text(
-                  'Suas agências',
-                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+              const AppModalHeader(title: 'Suas agências'),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                  children: agencyContext.memberships.map((membership) {
+                    final isActive = membership.agencyId == activeId;
+                    final initial = membership.displayAgencyName.isNotEmpty
+                        ? membership.displayAgencyName[0].toUpperCase()
+                        : '?';
+                    return ListTile(
+                      leading: CircleAvatar(child: Text(initial)),
+                      title: Text(
+                        membership.displayAgencyName,
+                        style: TextStyle(color: scheme.onSurface),
                       ),
+                      subtitle: Text(
+                        membership.role.label,
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                      trailing: isActive
+                          ? Icon(Icons.check_circle, color: scheme.primary)
+                          : null,
+                      selected: isActive,
+                      onTap: isActive
+                          ? null
+                          : () {
+                              Navigator.pop(dialogContext);
+                              _switchAgency(context, membership.agencyId);
+                            },
+                    );
+                  }).toList(),
                 ),
               ),
-              ...agencyContext.memberships.map((membership) {
-                final isActive = membership.agencyId == activeId;
-                final initial = membership.displayAgencyName.isNotEmpty
-                    ? membership.displayAgencyName[0].toUpperCase()
-                    : '?';
-                return ListTile(
-                  leading: CircleAvatar(child: Text(initial)),
-                  title: Text(membership.displayAgencyName),
-                  subtitle: Text(membership.role.label),
-                  trailing: isActive ? const Icon(Icons.check_circle) : null,
-                  selected: isActive,
-                  onTap: isActive
-                      ? null
-                      : () {
-                          Navigator.pop(sheetContext);
-                          _switchAgency(context, membership.agencyId);
-                        },
-                );
-              }),
-              const SizedBox(height: 8),
             ],
           ),
         );

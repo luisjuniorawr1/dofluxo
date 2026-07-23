@@ -277,12 +277,10 @@ class AccountPage extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () {
-                      showAppModal<void>(
+                      showAppModalPage(
                         context: context,
-                        builder: (dialogContext) => const AppModalShell(
-                          size: AppModalSize.medium,
-                          child: JoinAgencyPage(),
-                        ),
+                        size: AppModalSize.medium,
+                        child: const JoinAgencyPage(),
                       );
                     },
                     icon: const Icon(Icons.vpn_key_outlined),
@@ -290,12 +288,10 @@ class AccountPage extends StatelessWidget {
                   ),
                   OutlinedButton.icon(
                     onPressed: () {
-                      showAppModal<void>(
+                      showAppModalPage(
                         context: context,
-                        builder: (dialogContext) => const AppModalShell(
-                          size: AppModalSize.medium,
-                          child: AgencyOnboardingPage(isAdditional: true),
-                        ),
+                        size: AppModalSize.medium,
+                        child: const AgencyOnboardingPage(isAdditional: true),
                       );
                     },
                     icon: const Icon(Icons.add_business_outlined),
@@ -304,12 +300,10 @@ class AccountPage extends StatelessWidget {
                   if (agencyContext.canManageSettings)
                     OutlinedButton.icon(
                       onPressed: () {
-                        showAppModal<void>(
+                        showAppModalPage(
                           context: context,
-                          builder: (dialogContext) => const AppModalShell(
-                            size: AppModalSize.large,
-                            child: ProfilePage(),
-                          ),
+                          size: AppModalSize.large,
+                          child: const ProfilePage(),
                         );
                       },
                       icon: const Icon(Icons.settings_outlined),

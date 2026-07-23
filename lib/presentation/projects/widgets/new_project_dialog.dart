@@ -80,14 +80,12 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
   }
 
   Future<void> _openProjectFromCalendar(String projectId) async {
-    await showAppModal<void>(
+    await showAppModalPage(
       context: context,
-      builder: (dialogContext) => AppModalShell(
-        size: AppModalSize.large,
-        child: AgencyServiceScope.wrapRoute(
-          context,
-          ProjectDetailPage(projectId: projectId),
-        ),
+      size: AppModalSize.large,
+      child: AgencyServiceScope.wrapRoute(
+        context,
+        ProjectDetailPage(projectId: projectId),
       ),
     );
   }
