@@ -150,6 +150,16 @@ function Sync-MainFromOrigin {
         $null = Invoke-Git @("rebase", "--abort")
     }
 
+    # Cache do Hosting muda a cada deploy e nao deve bloquear sync.
+    $hostingCache = Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache"
+    if (Test-Path $hostingCache) {
+        Write-Host ">> descartando mudancas locais do cache Firebase Hosting..." -ForegroundColor DarkGray
+        $null = Invoke-Git @("restore", "--worktree", "--staged", "--", ".firebase/hosting.YnVpbGRcd2Vi.cache")
+        if ($LASTEXITCODE -ne 0) {
+            $null = Invoke-Git @("checkout", "--", ".firebase/hosting.YnVpbGRcd2Vi.cache")
+        }
+    }
+
     Write-Host ">> alinhando main local com origin/main..." -ForegroundColor Cyan
     $code = Invoke-Git @("reset", "--hard", "origin/main")
     if ($code -ne 0) { Assert-LastExit "git reset --hard origin/main" }
@@ -256,11 +266,6 @@ Write-Host ""
 Write-Host ">> git commit + push da versao $newVersion" -ForegroundColor Cyan
 $code = Invoke-Git @("add", "pubspec.yaml")
 if ($code -ne 0) { Assert-LastExit "git add pubspec.yaml" }
-
-$cachePath = Join-Path $PSScriptRoot ".firebase\hosting.YnVpbGRcd2Vi.cache"
-if (Test-Path $cachePath) {
-    $null = Invoke-Git @("add", ".firebase/hosting.YnVpbGRcd2Vi.cache")
-}
 
 $pending = git status --porcelain
 if ($pending) {
