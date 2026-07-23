@@ -33,6 +33,9 @@ class AppModalScope extends InheritedWidget {
 
 /// Abre conteúdo interno como JANELA modal com fundo desfocado.
 ///
+/// **Regra do app (AGENTS.md D10):** qualquer abertura para ver/editar/criar/
+/// confirmar usa esta API (ou [showAppModalPage] / [showAppConfirmModal]).
+/// Não usar `Navigator.push`, `AlertDialog` solto nem bottom sheet.
 /// Menu da sidebar (Dashboard, Clientes, Equipe, Conta) continua em páginas.
 /// Envolva o conteúdo com [AppModalShell] para o painel arredondado.
 Future<T?> showAppModal<T>({

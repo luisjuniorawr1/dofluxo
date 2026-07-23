@@ -577,17 +577,20 @@ MainShell._buildSidebar()
 
 ## Rotas e navegação
 
-Navegação imperativa (`Navigator.push`), sem `go_router`.
+Navegação imperativa, sem `go_router`.
+
+**Regra geral (AGENTS.md D10):** tudo que abre para ver/editar/criar/confirmar usa janela modal (`showAppModal` / `showAppModalPage` / `showAppConfirmModal` em `app_modal.dart`) com blur. A altura acompanha o conteúdo; altura fixa só quando o layout exige `Expanded` (Novo Projeto `wide`). Páginas embutidas usam `AppModalScope.isOf(context)`.
+
+**Exceção:** itens da sidebar (`MainShell` IndexedStack) — Dashboard, Clientes, Equipe, Conta — continuam páginas.
 
 | Origem | Destino | Método |
 |--------|---------|--------|
 | `AuthGate` | `MainShell` / `LoginPage` | automático |
-| `MainShell` sidebar | `ProfilePage` | `push` |
-| `DashboardPage` | `ProfilePage`, `ProjectDetailPage` | `push` |
-| `ClientsPage` | `ClientFormPage` | `push` |
-| Calendário sidebar | `ProjectDetailPage` | `push` via `onProjectTap` |
-
-`ProfilePage` não está no índice do `MainShell`.
+| `MainShell` sidebar | Dashboard / Clientes / Equipe / Conta | `IndexedStack` (página) |
+| Dashboard / calendário / cards | `ProjectDetailPage`, Novo Projeto, Config | `showAppModalPage` / `showAppModal` |
+| Clientes | `ClientFormPage`, confirmações | `showAppModalPage` / `showAppConfirmModal` |
+| Conta / Profile | código, criar agência, config | `showAppModalPage` |
+| Equipe | membro, papel, convite, remover | `showAppModal` + `AppModalShell` |
 
 ---
 

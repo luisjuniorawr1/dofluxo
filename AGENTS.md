@@ -36,6 +36,8 @@ O dono do produto **não** vai relembrar o que já foi feito a cada tarefa. Cabe
 - [ ] Nenhuma decisão travada foi revertida
 - [ ] Se toquei em `kanban_column.dart`: títulos ainda **dentro** do bloco colorido
 - [ ] Se toquei em update web: ainda é banner 5 min, não overlay fullscreen
+- [ ] Se abri tela de ver/editar/criar/confirmar: usa `showAppModal` / `showAppModalPage` (não `push` / `AlertDialog` / bottom sheet) — exceto páginas da sidebar
+- [ ] Modal novo encolhe ao conteúdo (`AppModalShell` padrão); altura fixa só se o layout exigir `Expanded` (ex.: Novo Projeto `wide`)
 
 ---
 
@@ -52,6 +54,7 @@ O dono do produto **não** vai relembrar o que já foi feito a cada tarefa. Cabe
 | D7 | **Títulos das colunas Kanban ficam DENTRO do bloco colorido** (header + cards no mesmo `DecoratedBox`). Não voltar título flutuando acima do fundo cinza. | `kanban_column.dart` |
 | D8 | Aviso de atualização web: banner canto inferior direito com graça de 5 min — **não** overlay fullscreen bloqueante | `app_update_gate.dart` |
 | D9 | Convite por código `DFX-XXXX-XXXX` (Membro/Admin) — não forçar criar agência no 1º login | agency / team / invite |
+| D10 | **Tudo que abre para ver/editar/criar/confirmar é JANELA modal** (`showAppModal` / `showAppModalPage` / `showAppConfirmModal`) com blur — **não** `Navigator.push`, `showDialog`/`AlertDialog` solto nem bottom sheet. **Exceção:** páginas da sidebar (Dashboard, Clientes, Equipe, Conta) no `MainShell`. **Altura:** acompanha o conteúdo por padrão; altura fixa só quando o layout precisa de `Expanded` (ex.: Novo Projeto `wide`). Páginas reutilizadas detectam modal via `AppModalScope`. | `app_modal.dart` + qualquer abertura interna |
 
 Ao travar uma nova decisão: atualize esta tabela **e** `NEXT_STEPS.md` no mesmo PR.
 
